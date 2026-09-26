@@ -15,5 +15,6 @@ dist/
 data/raw/
 data/out/*
 !data/out/results.md
+!data/out/qa.md
 !data/out/*.csv
 !data/out/*.png
