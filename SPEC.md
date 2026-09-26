@@ -105,7 +105,7 @@ Run each as a parameter in one config file, never hand-edited in code:
    - *Small price effect:* Orleans GDP (CAGDP2, place of work). It spreads the cost over all output, including goods sold into national markets whose prices can't rise locally, so it understates the price effect.
 2. **Outliers included.**
 3. **Hours rule:** actual hours (default) vs. requiring each worker to earn floor × 2,080 per year.
-4. **Out-of-state commuters dropped** (Louisiana residents only), to show how much the MS file and the other-state API pull change things.
+4. **Commuter sources, stepwise:** Louisiana residents only, then adding Mississippi residents, then adding other-state residents (which equals the headline). This shows how much each source contributes.
 5. **Pandemic years dropped** (2022–2024 only). This column also appears alongside the headline (§6).
 6. **Metro thresholds:** MIT New Orleans–Metairie metro thresholds in place of Orleans thresholds, for every worker.
 
@@ -177,7 +177,7 @@ nola-living-wage/
 | a | Family unit or whole PUMS household as MIT's household? | Family unit, with subfamilies (`SFN`/`SFR`) split out as their own units. This matches MIT's single pooled family budget. | §5 |
 | b | Home-parish thresholds for commuters? | Orleans thresholds for everyone as the headline. As of 2026-09-26, Orleans's figures are lower than Jefferson's, St. Tammany's and the metro figure (other parishes not checked), so Orleans is the conservative choice. Metro (CBSA 35380) thresholds are a sensitivity. Home-county thresholds per worker are not used: the spread is at most ~7% and residence is known only at PUMA level. Commuters stay in all gap and capacity math, and a leakage breakdown shows where gap dollars go. | §5, §7.6 |
 | c | Public-sector workers in the capacity test? | Kept in all counts and in gap ÷ GDP and gap ÷ compensation. The GOS test is shown both ways with equal prominence (private ÷ private GOS; all-sector ÷ total GOS). The government gap is also shown as a percent raise to government payroll. | §6 |
-| d | Out-of-state commuters beyond MS? | Census API pull of `POWSP` = 22 persons from every other state, so the employer-side universe is complete. Household typing uses LA and MS households only; other-state commuters appear as an untyped row. | §3, §4, §5, §7.4 |
+| d | Out-of-state commuters beyond MS? | Census API pull of `POWSP` = 22 persons from every other state, so the employer-side universe is complete. Household typing uses LA and MS households only; other-state commuters appear as an untyped row. | §3, §4, §5, §7.4 (stepwise: LA → +MS → +other states) |
 | e | Consumption base for price pass-through? | "CAPCE" does not exist; the source is SAPCE. The spending base is reported as two bounds: resident consumption (SAPCE × CAINC1/SAINC1), which overstates the price effect, and Orleans GDP, which understates it. | §3, §7.1 |
 | f | Year window? | The published 2020–2024 pool is the headline, with a 2022–2024 column alongside it in the main tables. Counts and dollar totals are rescaled by 5/3 on the subset. | §6, §7.5 |
 
