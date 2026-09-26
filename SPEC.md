@@ -46,7 +46,7 @@ MIT defines these as full-time rates at 2,080 hours per year. The pipeline scrap
 - Class of worker `COW` in wage/salary categories (private for-profit, nonprofit, local/state/federal government). Exclude self-employed and unpaid family workers from the wage gap and report them separately as a count.
 
 **Hourly wage:** `wage_hr = WAGP × (ADJINC / 1e6) / (WKHP × WKWN)`, then inflated by CPI-U South to the MIT price year.
-- The PUMS README says `ADJINC` brings all five survey years to 2024 dollars. MIT's methodology page (checked 2026-09-26) says all 2026 figures are in **December 2025 dollars**. Carry wages forward by CPI-U South, December 2025 ÷ 2024 annual average. Re-check the stated price basis at the §11 step 2 checkpoint.
+- The PUMS README says `ADJINC` brings all five survey years to 2024 dollars. MIT's methodology page (checked 2026-09-26) says all 2026 figures are in **December 2025 dollars**. Carry wages forward by CPI-U South, December 2025 ÷ 2024 annual average. Use December 2025, not the 2025 annual average, because it matches MIT's stated basis exactly. The annual average is lower, so using it would understate wages relative to the thresholds and inflate the gap. Re-check the stated price basis at the §11 step 2 checkpoint.
 - Keep the direction consistent: move wages to MIT's year, not MIT back to 2024. That way results read in today's dollars.
 
 **Outlier rule:** Flag hourly wages below $2 or above $500 and exclude them from the main run. Report how many were dropped, and run a sensitivity check with them left in. These come from misreported hours or weeks, not real pay.
@@ -175,12 +175,10 @@ nola-living-wage/
 | # | Question | Decision | Where applied |
 |---|---|---|---|
 | a | Family unit or whole PUMS household as MIT's household? | Family unit, with subfamilies (`SFN`/`SFR`) split out as their own units. This matches MIT's single pooled family budget. | §5 |
-| b | Home-parish thresholds for commuters? | Orleans thresholds for everyone as the headline. It is the lowest of the metro-area figures, so the most conservative. Metro (CBSA 35380) thresholds are a sensitivity. Home-county thresholds per worker are not used: the spread is at most ~7% and residence is known only at PUMA level. Commuters stay in all gap and capacity math, and a leakage breakdown shows where gap dollars go. | §5, §7.6 |
+| b | Home-parish thresholds for commuters? | Orleans thresholds for everyone as the headline. As of 2026-09-26, Orleans's figures are lower than Jefferson's, St. Tammany's and the metro figure (other parishes not checked), so Orleans is the conservative choice. Metro (CBSA 35380) thresholds are a sensitivity. Home-county thresholds per worker are not used: the spread is at most ~7% and residence is known only at PUMA level. Commuters stay in all gap and capacity math, and a leakage breakdown shows where gap dollars go. | §5, §7.6 |
 | c | Public-sector workers in the capacity test? | Kept in all counts and in gap ÷ GDP and gap ÷ compensation. The GOS test is shown both ways with equal prominence (private ÷ private GOS; all-sector ÷ total GOS). The government gap is also shown as a percent raise to government payroll. | §6 |
 | d | Out-of-state commuters beyond MS? | Census API pull of `POWSP` = 22 persons from every other state, so the employer-side universe is complete. Household typing uses LA and MS households only; other-state commuters appear as an untyped row. | §3, §4, §5, §7.4 |
 | e | Consumption base for price pass-through? | "CAPCE" does not exist; the source is SAPCE. The spending base is reported as two bounds: resident consumption (SAPCE × CAINC1/SAINC1), which overstates the price effect, and Orleans GDP, which understates it. | §3, §7.1 |
 | f | Year window? | The published 2020–2024 pool is the headline, with a 2022–2024 column alongside it in the main tables. Counts and dollar totals are rescaled by 5/3 on the subset. | §6, §7.5 |
 
 **Corrections found while resolving these:** MIT's thresholds are in December 2025 dollars, not "2025 prices" (§4). The industry crosswalk must key on (`COW`, `NAICSP`), not `NAICSP` alone (§8). Two things to check at the checkpoint: `NAICSP` vintages and `POWPUMA` labels in the 5-year file (§8).
-
-**Future work (not in scope):** a greater-New-Orleans analysis comparing metro workplaces with MSA GDP.
