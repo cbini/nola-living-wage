@@ -11,6 +11,7 @@ def _persons(wagp, powpuma="02400", cow="1"):
     n = len(wagp)
     return pl.DataFrame({"SERIALNO": [f"2022HU{i:07d}" for i in range(n)], "POWSP": ["022"] * n,
                          "POWPUMA": [powpuma] * n, "COW": [cow] * n, "WAGP": wagp,
+                         "WKHP": [40] * n, "WKWN": [52] * n,
                          "ADJINC": [1_000_000] * n, "PWGTP": [1] * n} | {f"PWGTP{i}": [1] * n for i in range(1, 81)})
 
 

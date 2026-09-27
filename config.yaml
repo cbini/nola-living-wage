@@ -9,6 +9,7 @@ orleans:
   county_fips: "071"
   powsp: "022"
   powpuma: ["02400"]
+  residence_pumas: ["02401", "02402", "02403"]
 
 mit:
   base_url: "https://livingwage.mit.edu"
@@ -71,6 +72,7 @@ universe:
   cow_public: ["3", "4", "5"]
   cow_self: ["6", "7"]
   cow_unpaid: ["8"]
+  cow_class: {"1": private, "2": nonprofit, "3": public, "4": public, "5": public}
   wage_min: 2
   wage_max: 500
 

@@ -7,10 +7,10 @@ from pathlib import Path
 import polars as pl
 
 from nola_lw.analysis.se import moe90, weighted_total
+from nola_lw.build.universe import load_persons
 from nola_lw.fetch.bea import load_bea
 from nola_lw.fetch.bls import annual_mean, cpi_factor
 from nola_lw.fetch.ipums import orleans_powpumas, read_composition
-from nola_lw.fetch.pums import PERSON_VARS, REP_VARS, scan_persons
 
 
 def _year(col: str = "SERIALNO") -> pl.Expr:
@@ -38,7 +38,8 @@ def wage_check(persons: pl.DataFrame, bea_wages_2024usd: float, cfg, cow: list[s
     """Survey WAGP (average year, ADJINC dollars) for the place-of-work universe vs. BEA wages and salaries."""
     o, u = cfg["orleans"], cfg["universe"]
     df = persons.filter((pl.col("POWSP") == o["powsp"]) & pl.col("POWPUMA").is_in(o["powpuma"])
-                        & pl.col("COW").is_in(cow or u["cow_wage"]) & (pl.col("WAGP") > 0))
+                        & pl.col("COW").is_in(cow or u["cow_wage"]) & (pl.col("WAGP") > 0)
+                        & (pl.col("WKHP") > 0) & (pl.col("WKWN") > 0))
     df = df.with_columns(wagp_adj=pl.col("WAGP") * pl.col("ADJINC") / 1e6)
     survey, se = weighted_total(df, "wagp_adj")
     pct = survey / bea_wages_2024usd - 1
@@ -71,19 +72,11 @@ def bea_wages_2024usd(bea: pl.DataFrame, cpi_json: dict, cfg) -> tuple[float, pl
 
 
 def _load_persons(raw: Path, cfg) -> tuple[pl.DataFrame | None, list[str]]:
-    pums = raw / "pums"
-    files = [pums / f"psam_p{cfg['pums']['bulk_state_fips'][st]}.csv" for st in cfg["pums"]["bulk_states"]]
-    files.append(pums / "other_states.parquet")
-    missing = [str(f) for f in files if not f.exists()]
-    done = set((pums / "other_states.done").read_text().split()) if (pums / "other_states.done").exists() else set()
-    not_done = sorted(set(cfg["pums"]["other_states"]) - done)
-    if not_done:
-        missing.append(f"other-state PUMS not fetched: {', '.join(not_done)}")
-    if missing:
-        return None, missing
-    powsp = cfg["orleans"]["powsp"]
-    frames = [scan_persons(f) for f in files[:-1]] + [pl.scan_parquet(files[-1]).select(PERSON_VARS + REP_VARS)]
-    return pl.concat(frames).filter(pl.col("POWSP") == powsp).collect(), []
+    try:
+        persons = load_persons(cfg, raw)
+    except FileNotFoundError as e:
+        return None, str(e).split("; ")
+    return persons.filter(pl.col("POWSP") == cfg["orleans"]["powsp"]), []
 
 
 def _tract_pumas(raw: Path, cfg) -> pl.DataFrame | None:
