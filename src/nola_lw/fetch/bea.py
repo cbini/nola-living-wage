@@ -33,6 +33,8 @@ def parse_bea_csv(path: Path, geo: str, bea_cfg: dict) -> pl.DataFrame:
     out = []
     for r in rows[1:]:
         if len(r) != len(header):  # footnote/source lines at the end
+            if r and r[0].strip().strip('"') == geo:
+                raise ValueError(f"{path}: malformed row for {geo}: {len(r)} fields, header has {len(header)}")
             continue
         rec = dict(zip(header, r))
         if rec["GeoFIPS"].strip().strip('"') != geo:

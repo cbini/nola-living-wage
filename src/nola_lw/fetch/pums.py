@@ -64,10 +64,12 @@ def fetch_other_states(cfg, raw: Path = RAW, download_fn=download) -> Path:
         z = download_fn(f"{p['bulk_base']}/csv_p{st}.zip", raw / f"csv_p{st}.zip")
         tmp = raw / f"_tmp_{st}"
         csvs = _extract(z, tmp)
-        kept = pl.concat([keep_la_worker_households(scan_persons(c), powsp).collect() for c in csvs])
+        kept = pl.concat([keep_la_worker_households(scan_persons(c), powsp).collect() for c in csvs]).with_columns(
+            src_file=pl.lit(st))
         print(f"pums {st}: kept {kept.height} persons", flush=True)
-        if out.exists():
-            kept = pl.concat([pl.read_parquet(out), kept])
+        if out.exists():  # drop this state's rows first, in case a crash left them without a .done line
+            prior = pl.read_parquet(out)
+            kept = pl.concat([prior.filter(pl.col("src_file") != st), kept])
         kept.write_parquet(out.with_suffix(".tmp"))
         out.with_suffix(".tmp").replace(out)
         with done_file.open("a") as f:  # written only after the parquet holds this state
@@ -75,5 +77,5 @@ def fetch_other_states(cfg, raw: Path = RAW, download_fn=download) -> Path:
         shutil.rmtree(tmp)
         z.unlink()
     if not out.exists():
-        pl.DataFrame(schema={c: SCHEMA[c] for c in PERSON_VARS + REP_VARS}).write_parquet(out)
+        pl.DataFrame(schema={c: SCHEMA[c] for c in PERSON_VARS + REP_VARS} | {"src_file": pl.Utf8}).write_parquet(out)
     return out

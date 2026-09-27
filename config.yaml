@@ -27,6 +27,7 @@ cpi:
 pums:
   bulk_base: "https://www2.census.gov/programs-surveys/acs/data/pums/2024/5-Year"
   bulk_states: ["la", "ms"]
+  bulk_state_fips: {la: "22", ms: "28"}
   # 48 states + DC, excluding LA and MS
   other_states: [ak, al, ar, az, ca, co, ct, dc, de, fl, ga, hi, ia, id, il, in, ks, ky,
                  ma, md, me, mi, mn, mo, mt, nc, nd, ne, nh, nj, nm, nv, ny, oh, ok, or,

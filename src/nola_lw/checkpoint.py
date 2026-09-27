@@ -1,6 +1,7 @@
 """SPEC §11.2 checkpoint: facts to confirm before building the universe. Missing inputs print BLOCKED, never a guess."""
 import csv
 import json
+from datetime import datetime
 from pathlib import Path
 
 import polars as pl
@@ -18,6 +19,18 @@ def _year(col: str = "SERIALNO") -> pl.Expr:
 def powpuma_by_year(df: pl.DataFrame, powsp: str) -> pl.DataFrame:
     return (df.filter(pl.col("POWSP") == powsp).with_columns(year=_year())
             .group_by("year", "POWPUMA").agg(weighted=pl.col("PWGTP").sum()))
+
+
+def commute_flows(df: pl.DataFrame, state_fips: str, powsp: str, code: str) -> pl.DataFrame:
+    """In-state residents working in-state: share (weighted) whose POWPUMA is `code`, by residence PUMA group and year."""
+    return (df.filter((pl.col("STATE") == state_fips) & (pl.col("POWSP") == powsp))
+            .with_columns(res_group=pl.col("PUMA").str.slice(0, 3), year=_year())
+            .group_by("res_group", "year")
+            .agg(share=pl.col("PWGTP").filter(pl.col("POWPUMA") == code).sum() / pl.col("PWGTP").sum()))
+
+
+def basis_month(basis: str) -> str:
+    return datetime.strptime(basis, "%B %Y").strftime("%Y-%m")
 
 
 def wage_check(persons: pl.DataFrame, bea_wages_2024usd: float, cfg) -> dict:
@@ -58,7 +71,8 @@ def bea_wages_2024usd(bea: pl.DataFrame, cpi_json: dict, cfg) -> tuple[float, pl
 
 def _load_persons(raw: Path, cfg) -> tuple[pl.DataFrame | None, list[str]]:
     pums = raw / "pums"
-    files = [pums / f"psam_p{cfg['orleans']['state_fips']}.csv", pums / "psam_p28.csv", pums / "other_states.parquet"]
+    files = [pums / f"psam_p{cfg['pums']['bulk_state_fips'][st]}.csv" for st in cfg["pums"]["bulk_states"]]
+    files.append(pums / "other_states.parquet")
     missing = [str(f) for f in files if not f.exists()]
     done = set((pums / "other_states.done").read_text().split()) if (pums / "other_states.done").exists() else set()
     not_done = sorted(set(cfg["pums"]["other_states"]) - done)
@@ -67,7 +81,7 @@ def _load_persons(raw: Path, cfg) -> tuple[pl.DataFrame | None, list[str]]:
     if missing:
         return None, missing
     powsp = cfg["orleans"]["powsp"]
-    frames = [scan_persons(f) for f in files[:2]] + [pl.scan_parquet(files[2]).select(PERSON_VARS + REP_VARS)]
+    frames = [scan_persons(f) for f in files[:-1]] + [pl.scan_parquet(files[-1]).select(PERSON_VARS + REP_VARS)]
     return pl.concat(frames).filter(pl.col("POWSP") == powsp).collect(), []
 
 
@@ -130,13 +144,28 @@ def _section_powpuma(persons, tracts, raw: Path, cfg) -> str:
         checks.append((code, only_orleans, all_orleans_in, in_all_years))
         s += (f"- `{code}`: residence PUMAs {grp['PUMA5CE'].to_list()} lie only in county {cty}: **{only_orleans}**; "
               f"they cover every Orleans PUMA {orleans_pumas}: **{all_orleans_in}**; present in every survey year: **{in_all_years}**.\n")
-    ok = all(all(c[1:]) for c in checks)
-    s += (f"\n**Verdict: {'CONFIRMED' if ok else 'NOT CONFIRMED'}** — config `orleans.powpuma` = {o['powpuma']}. "
-          "There is one `POWPUMA` field, labelled as 2020 Census definitions, and the same codes appear in every survey year, "
-          "so Census has coded all five years to 2020 POWPUMAs (no 2010 vintage in this file). "
-          "Caveat: Census's official 2020 POWPUMA composition file was not reachable from this environment "
-          "(usa.ipums.org is blocked; www2.census.gov carries only the tract-to-PUMA file), so the PUMA-to-POWPUMA link "
-          "rests on the 3-digit naming convention, checked against the counts above.\n\n")
+    flows_ok = True
+    for code in o["powpuma"]:
+        fl = commute_flows(persons, st, o["powsp"], code).pivot(on="year", index="res_group", values="share").sort("res_group")
+        yrs = sorted(c for c in fl.columns if c != "res_group")
+        fl = fl.select(["res_group"] + yrs)
+        home = code[:3]
+        top = {y: fl.sort(y, descending=True, nulls_last=True)["res_group"][0] for y in yrs}
+        flows_ok &= all(g == home for g in top.values())
+        s += (f"\nCommute flows (independent of the naming convention): share of in-state residents working in-state whose "
+              f"`POWPUMA` is `{code}`, by residence PUMA group (first 3 digits) and survey year. If `{code}` is Orleans, "
+              f"group `{home}` (Orleans residents) should have the highest share in every year, and a 2010/2020 coding "
+              f"break would show as a jump between years:\n\n"
+              + _md_table(fl.with_columns([pl.col(y).map_elements(lambda x: f"{x:.1%}", return_dtype=pl.Utf8) for y in yrs]))
+              + f"\n\nHighest-share group per year: {top}.\n")
+    ok = all(all(c[1:]) for c in checks) and flows_ok
+    s += (f"\n**Verdict: {'CONFIRMED by composition, commute flows and presence in every year' if ok else 'NOT CONFIRMED — stop and review'}** "
+          f"— config `orleans.powpuma` = {o['powpuma']}. "
+          "The file has one `POWPUMA` field, labelled as 2020 Census definitions, with no 2010-vintage field; the same codes "
+          "appear in every survey year, which is consistent with Census coding all five years to 2020 POWPUMAs (an inference "
+          "from the label and the data, not a Census statement). Not checked: Census's official 2020 POWPUMA equivalency file, "
+          "which was not reachable from this environment (usa.ipums.org is blocked; www2.census.gov has only the "
+          "tract-to-PUMA file).\n\n")
     return s
 
 
@@ -158,11 +187,12 @@ def _section_wages(persons, bea, cpi_json, cfg) -> str:
     r = wage_check(persons, bea_2024, cfg)
     s += ("Universe: `POWSP` = {p}, `POWPUMA` in {pp}, `COW` in {cow}, `WAGP` > 0; any state of residence. "
           "Survey = Σ PWGTP·WAGP·ADJINC/1e6 (5-year weights → an average year, 2024 dollars). "
-          "BEA = 2020–2024 mean of {t} line {l}, each year put in 2024 dollars by CPI-U South annual averages.\n\n").format(
-        p=cfg["orleans"]["powsp"], pp=cfg["orleans"]["powpuma"], cow=cfg["universe"]["cow_wage"], t=w["table"], l=w["line"])
+          "BEA = {y0}–{y1} mean of {t} line {l}, each year put in {b} dollars by {cs} annual averages.\n\n").format(
+        p=cfg["orleans"]["powsp"], pp=cfg["orleans"]["powpuma"], cow=cfg["universe"]["cow_wage"], t=w["table"], l=w["line"],
+        y0=cfg["years"]["pool"][0], y1=cfg["years"]["pool"][1], b=cfg["cpi"]["base_year"], cs=cfg["cpi"]["series"])
     s += _md_table(yrs.with_columns(pl.col("defl").map_elements(lambda x: f"{x:.4f}", return_dtype=pl.Utf8))) + "\n\n"
     s += (f"| measure | value |\n|---|---|\n| survey (avg year, 2024$) | ${r['survey']:,.0f} ± {r['survey_moe']:,.0f} (90% MOE) |\n"
-          f"| BEA (avg 2020–24, 2024$) | ${r['bea']:,.0f} |\n| difference | {r['pct_diff']:+.1%} ± {r['pct_moe']:.1%} (survey sampling error only) |\n"
+          f"| BEA (avg {cfg['years']['pool'][0]}–{cfg['years']['pool'][1]}, {cfg['cpi']['base_year']}$) | ${r['bea']:,.0f} |\n| difference | {r['pct_diff']:+.1%} ± {r['pct_moe']:.1%} (survey sampling error only) |\n"
           f"| person records | {r['n_records']:,} |\n\n")
     tol = cfg["checkpoint"]["wage_tolerance"]
     s += (f"**{'FLAG: beyond' if r['flag'] else 'Within'} ±{tol:.0%}.**\n\n")
@@ -182,7 +212,9 @@ def _section_mit(snapshots: Path, cfg) -> str:
     basis = {r["price_basis"] for r in rows}
     target = cfg["cpi"]["target"]
     s += f"Snapshot `{snaps[-1].name}`: MIT's methodology page says figures are adjusted to **{', '.join(sorted(basis))} dollars**. "
-    s += f"Config `cpi.target` = `{target}`. Floor ({cfg['mit']['floor_type']}) = ${next(float(r['hourly']) for r in rows if r['household'] == cfg['mit']['floor_type']):.2f}/hr.\n\n"
+    months = {basis_month(b) for b in basis}
+    s += (f"Config `cpi.target` = `{target}`: **{'matches' if months == {target} else 'MISMATCH — update cpi.target before building wages'}**. ")
+    s += f" Floor ({cfg['mit']['floor_type']}) = ${next(float(r['hourly']) for r in rows if r['household'] == cfg['mit']['floor_type']):.2f}/hr.\n\n"
     return s
 
 
@@ -197,12 +229,15 @@ def _section_suppression(bea, cfg) -> str:
     sup = sup.with_columns(pl.col("suppressed_lines").list.join(" "),
                            share=pl.col("share").map_elements(lambda x: f"{x:.4%}", return_dtype=pl.Utf8))
     s += "CAGDP2, Orleans, dollars. Residual = total − Σ top-level sectors; ±$2k is BEA rounding:\n\n" + _md_table(sup) + "\n\n"
-    c6 = bea.filter((pl.col("table") == "CAINC6N") & (pl.col("geo") == geo))
-    cnt = c6.group_by("year").agg(cells=pl.len(), suppressed=pl.col("flag").is_not_null().sum(),
-                                  D=(pl.col("flag") == "(D)").sum(), NA=(pl.col("flag") == "(NA)").sum(),
-                                  zero_values=(pl.col("value") == 0).sum()).sort("year")
-    s += "CAINC6N, Orleans, cell counts by year:\n\n" + _md_table(cnt) + "\n\n"
-    s += f"Total suppressed CAINC6N cells 2020–2024: **{int(cnt['suppressed'].sum())}** ((D) {int(cnt['D'].sum())}, (NA) {int(cnt['NA'].sum())}).\n\n"
+    comp = b["wages_crosscheck"]["table"]
+    c6 = bea.filter((pl.col("table") == comp) & (pl.col("geo") == geo))
+    cnt = c6.group_by("year").agg([pl.len().alias("cells"), pl.col("flag").is_not_null().sum().alias("flagged")]
+                                  + [(pl.col("flag") == f).sum().alias(f) for f in b["suppression_flags"]]
+                                  + [(pl.col("value") == 0).sum().alias("zero_values")]).sort("year")
+    s += f"{comp}, Orleans, cell counts by year ((D) = disclosure suppression; (NA) = not available):\n\n" + _md_table(cnt) + "\n\n"
+    y0, y1 = cfg["years"]["pool"]
+    s += (f"Flagged {comp} cells {y0}–{y1}: **{int(cnt['flagged'].sum())}** — "
+          + ", ".join(f"{f} {int(cnt[f].sum())}" for f in b["suppression_flags"]) + ".\n\n")
     return s
 
 

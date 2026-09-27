@@ -9,6 +9,7 @@ from nola_lw.fetch.common import download
 
 HOUSEHOLD_KEYS = [f"a{a}_w{w}_c{c}" for a, w in [(1, 1), (2, 1), (2, 2)] for c in range(4)]
 GROUP_HEADERS = ["1 ADULT", "2 ADULTS (1 WORKING)", "2 ADULTS (BOTH WORKING)"]
+CHILD_HEADERS = ["0 Children", "1 Child", "2 Children", "3 Children"] * 3
 FIELDS = ["area", "household", "adults", "working", "children", "hourly", "price_basis", "fetched"]
 
 
@@ -25,6 +26,9 @@ def parse_thresholds(html: str) -> dict[str, float]:
     headers = [h.replace("( ", "(").replace(" )", ")") for h in headers if h]
     if headers != GROUP_HEADERS:
         raise ValueError(f"MIT page: household headers changed: {headers}")
+    kids = [_text(b) for b in re.findall(r"<td>\s*<b>(.*?)</b>\s*</td>", table, re.S)]
+    if kids != CHILD_HEADERS:
+        raise ValueError(f"MIT page: children sub-headers changed: {kids}")
     row = next(r for r in re.findall(r"<tr.*?</tr>", table, re.S) if "Living Wage" in r)
     values = [float(v.replace(",", "")) for v in re.findall(r"\$\s*([\d,]+\.\d{2})", row)]
     if len(values) != len(HOUSEHOLD_KEYS):

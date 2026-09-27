@@ -7,5 +7,5 @@ How many people who work in Orleans Parish (place of work, not residence) earn b
 ```sh
 uv sync
 cp .env.example .env   # both keys optional; bulk downloads need none
-uv run nola-lw all
+uv run --env-file .env nola-lw all   # uv loads the keys from .env
 ```

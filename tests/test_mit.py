@@ -34,3 +34,9 @@ def test_price_basis():
 def test_price_basis_missing():
     with pytest.raises(ValueError):
         parse_price_basis("<p>no basis here</p>")
+
+
+def test_parse_rejects_reordered_children():
+    html = (FIX / "mit_22071.html").read_text().replace("<b>0&nbsp;Children</b>", "<b>3&nbsp;Children</b>", 1)
+    with pytest.raises(ValueError):
+        parse_thresholds(html)

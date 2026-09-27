@@ -62,3 +62,12 @@ def test_table_file_falls_back_to_all_areas(tmp_path):
     f.write_text("")
     (tmp_path / "SAINC" / "SAINC11_LA_1999_2025.csv").write_text("")
     assert _table_file(tmp_path, "SAINC1", "LA") == f
+
+
+def test_malformed_row_for_geo_raises(tmp_path):
+    p = tmp_path / "x.csv"
+    p.write_text('GeoFIPS,GeoName,Region,TableName,LineCode,IndustryClassification,Description,Unit,2023,2024\n'
+                 ' "22071","Orleans, LA",5,CAINC5N,50,"...","Wages","Thousands of dollars",1,2,3\n'
+                 '"U.S. Bureau of Economic Analysis"\n')
+    with pytest.raises(ValueError, match="malformed"):
+        _parse(p)

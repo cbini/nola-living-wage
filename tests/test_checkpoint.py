@@ -65,3 +65,32 @@ def test_report_without_cpi_blocks_only_the_comparison(tmp_path, monkeypatch):
     assert "$80 ± 0" in text
     assert "BLOCKED" in text and "CUUR0300SA0" in text
     assert "difference |" not in text
+
+
+def test_commute_flows_share_by_residence_group():
+    from nola_lw.checkpoint import commute_flows
+    df = pl.DataFrame({"SERIALNO": ["2020HU1", "2020HU2", "2020HU3", "2020HU4"], "STATE": ["22"] * 4,
+                       "PUMA": ["02401", "02402", "02301", "02301"], "POWSP": ["022"] * 4,
+                       "POWPUMA": ["02400", "01500", "02400", "02390"], "PWGTP": [3, 1, 1, 1]})
+    out = commute_flows(df, "22", "022", "02400").sort("res_group").rows(named=True)
+    assert out[0]["res_group"] == "023" and out[0]["share"] == pytest.approx(0.5)
+    assert out[1]["res_group"] == "024" and out[1]["share"] == pytest.approx(0.75)
+
+
+def test_price_basis_mismatch_flagged(tmp_path):
+    from nola_lw.checkpoint import _section_mit, basis_month
+    assert basis_month("December 2025") == "2025-12"
+    area = CFG["mit"]["county_path"].replace("/", "_")
+    (tmp_path / f"mit_{area}_2027-02-01.csv").write_text(
+        "area,household,adults,working,children,hourly,price_basis,fetched\n"
+        f"{area},a1_w1_c0,1,1,0,21.00,December 2026,2027-02-01\n")
+    assert "MISMATCH" in _section_mit(tmp_path, CFG)
+
+
+def test_load_persons_file_names_from_config(tmp_path):
+    from nola_lw.checkpoint import _load_persons
+    import copy
+    cfg = copy.deepcopy(CFG)
+    cfg["pums"]["bulk_state_fips"] = {"la": "22", "ms": "99"}
+    _, missing = _load_persons(tmp_path, cfg)
+    assert any("psam_p99.csv" in m for m in missing)

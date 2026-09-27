@@ -50,3 +50,14 @@ def test_other_states_resumes(tmp_path):
     fetch_other_states(cfg, raw=tmp_path, download_fn=_fake_zip_download(calls))
     assert len(calls) == 2
     assert pl.read_parquet(out).height == 6
+
+
+def test_other_states_crash_before_done_does_not_duplicate(tmp_path):
+    cfg = load_config()
+    cfg["pums"]["other_states"] = ["ak"]
+    cfg["pums"]["min_free_disk_gb"] = 0
+    calls = []
+    out = fetch_other_states(cfg, raw=tmp_path, download_fn=_fake_zip_download(calls))
+    (tmp_path / "other_states.done").unlink()  # crash after parquet write, before .done
+    fetch_other_states(cfg, raw=tmp_path, download_fn=_fake_zip_download(calls))
+    assert pl.read_parquet(out).height == 3

@@ -70,11 +70,43 @@ Weighted persons with `POWSP` = 022, by `POWPUMA` and survey year (5-year weight
 
 - `02400`: residence PUMAs ['02401', '02402', '02403'] lie only in county 071: **True**; they cover every Orleans PUMA ['02401', '02402', '02403']: **True**; present in every survey year: **True**.
 
-**Verdict: CONFIRMED** — config `orleans.powpuma` = ['02400']. There is one `POWPUMA` field, labelled as 2020 Census definitions, and the same codes appear in every survey year, so Census has coded all five years to 2020 POWPUMAs (no 2010 vintage in this file). Caveat: Census's official 2020 POWPUMA composition file was not reachable from this environment (usa.ipums.org is blocked; www2.census.gov carries only the tract-to-PUMA file), so the PUMA-to-POWPUMA link rests on the 3-digit naming convention, checked against the counts above.
+Commute flows (independent of the naming convention): share of in-state residents working in-state whose `POWPUMA` is `02400`, by residence PUMA group (first 3 digits) and survey year. If `02400` is Orleans, group `024` (Orleans residents) should have the highest share in every year, and a 2010/2020 coding break would show as a jump between years:
+
+| res_group | 2020 | 2021 | 2022 | 2023 | 2024 |
+|---|---|---|---|---|---|
+| 001 | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% |
+| 002 | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% |
+| 003 | 0.0% | 0.4% | 0.2% | 0.0% | 0.0% |
+| 004 | 0.0% | 0.1% | 0.7% | 0.0% | 0.0% |
+| 005 | 0.0% | 0.0% | 0.0% | 0.1% | 0.0% |
+| 006 | 2.5% | 0.0% | 0.4% | 0.1% | 0.0% |
+| 007 | 0.0% | 0.2% | 0.0% | 0.5% | 0.1% |
+| 008 | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% |
+| 009 | 0.0% | 0.5% | 0.0% | 0.0% | 0.6% |
+| 010 | 0.0% | 0.0% | 0.0% | 0.0% | 0.2% |
+| 011 | 0.3% | 0.3% | 0.0% | 0.2% | 0.0% |
+| 012 | 0.0% | 0.2% | 0.6% | 0.0% | 0.1% |
+| 013 | 0.0% | 0.0% | 0.0% | 0.0% | 0.3% |
+| 014 | 0.0% | 0.4% | 0.0% | 0.3% | 0.0% |
+| 015 | 0.2% | 0.3% | 0.9% | 0.2% | 0.6% |
+| 016 | 1.6% | 0.2% | 0.8% | 0.2% | 0.1% |
+| 017 | 0.0% | 0.2% | 0.1% | 0.3% | 0.1% |
+| 018 | 0.6% | 2.0% | 1.7% | 3.5% | 1.9% |
+| 019 | 12.6% | 5.7% | 8.1% | 7.3% | 5.5% |
+| 020 | 0.1% | 1.6% | 1.5% | 0.5% | 0.9% |
+| 021 | 0.8% | 1.4% | 0.0% | 0.9% | 1.1% |
+| 022 | 9.9% | 8.1% | 11.9% | 12.6% | 13.1% |
+| 023 | 27.9% | 24.8% | 28.5% | 27.1% | 25.9% |
+| 024 | 79.6% | 78.6% | 80.5% | 80.1% | 81.4% |
+| 025 | 23.5% | 21.5% | 23.6% | 27.1% | 26.4% |
+
+Highest-share group per year: {'2020': '024', '2021': '024', '2022': '024', '2023': '024', '2024': '024'}.
+
+**Verdict: CONFIRMED by composition, commute flows and presence in every year** — config `orleans.powpuma` = ['02400']. The file has one `POWPUMA` field, labelled as 2020 Census definitions, with no 2010-vintage field; the same codes appear in every survey year, which is consistent with Census coding all five years to 2020 POWPUMAs (an inference from the label and the data, not a Census statement). Not checked: Census's official 2020 POWPUMA equivalency file, which was not reachable from this environment (usa.ipums.org is blocked; www2.census.gov has only the tract-to-PUMA file).
 
 ## 2. Survey WAGP vs. BEA wages and salaries (place of work)
 
-Universe: `POWSP` = 022, `POWPUMA` in ['02400'], `COW` in ['1', '2', '3', '4', '5'], `WAGP` > 0; any state of residence. Survey = Σ PWGTP·WAGP·ADJINC/1e6 (5-year weights → an average year, 2024 dollars). BEA = 2020–2024 mean of CAINC5N line 50, each year put in 2024 dollars by CPI-U South annual averages.
+Universe: `POWSP` = 022, `POWPUMA` in ['02400'], `COW` in ['1', '2', '3', '4', '5'], `WAGP` > 0; any state of residence. Survey = Σ PWGTP·WAGP·ADJINC/1e6 (5-year weights → an average year, 2024 dollars). BEA = 2020–2024 mean of CAINC5N line 50, each year put in 2024 dollars by CUUR0300SA0 annual averages.
 
 | year | value | defl | value_2024usd |
 |---|---|---|---|
@@ -87,7 +119,7 @@ Universe: `POWSP` = 022, `POWPUMA` in ['02400'], `COW` in ['1', '2', '3', '4', '
 | measure | value |
 |---|---|
 | survey (avg year, 2024$) | $12,744,292,960 ± 417,711,003 (90% MOE) |
-| BEA (avg 2020–24, 2024$) | $14,219,561,890 |
+| BEA (avg 2020–2024, 2024$) | $14,219,561,890 |
 | difference | -10.4% ± 2.9% (survey sampling error only) |
 | person records | 9,627 |
 
@@ -97,7 +129,7 @@ Caveats: POWPUMA describes the job held last week, so people with wages in the p
 
 ## 3. MIT stated price basis
 
-Snapshot `mit_counties_22071_2026-09-27.csv`: MIT's methodology page says figures are adjusted to **December 2025 dollars**. Config `cpi.target` = `2025-12`. Floor (a1_w1_c0) = $20.29/hr.
+Snapshot `mit_counties_22071_2026-09-27.csv`: MIT's methodology page says figures are adjusted to **December 2025 dollars**. Config `cpi.target` = `2025-12`: **matches**.  Floor (a1_w1_c0) = $20.29/hr.
 
 CPI factor 2025-12 ÷ 2024 average (CUUR0300SA0): **1.0278**.
 
@@ -113,17 +145,17 @@ CAGDP2, Orleans, dollars. Residual = total − Σ top-level sectors; ±$2k is BE
 | 2023 | 29,678,170,000 | 29,678,168,000 | 0 |  | 2,000 | 0.0000% |
 | 2024 | 30,835,434,000 | 30,835,436,000 | 0 |  | -2,000 | -0.0000% |
 
-CAINC6N, Orleans, cell counts by year:
+CAINC6N, Orleans, cell counts by year ((D) = disclosure suppression; (NA) = not available):
 
-| year | cells | suppressed | D | NA | zero_values |
-|---|---|---|---|---|---|
-| 2020 | 118 | 18 | 17 | 1 | 2 |
-| 2021 | 118 | 17 | 16 | 1 | 2 |
-| 2022 | 118 | 26 | 25 | 1 | 2 |
-| 2023 | 118 | 27 | 26 | 1 | 3 |
-| 2024 | 118 | 34 | 33 | 1 | 2 |
+| year | cells | flagged | (D) | (NA) | (NM) | (L) | zero_values |
+|---|---|---|---|---|---|---|---|
+| 2020 | 118 | 18 | 17 | 1 | 0 | 0 | 2 |
+| 2021 | 118 | 17 | 16 | 1 | 0 | 0 | 2 |
+| 2022 | 118 | 26 | 25 | 1 | 0 | 0 | 2 |
+| 2023 | 118 | 27 | 26 | 1 | 0 | 0 | 3 |
+| 2024 | 118 | 34 | 33 | 1 | 0 | 0 | 2 |
 
-Total suppressed CAINC6N cells 2020–2024: **122** ((D) 117, (NA) 5).
+Flagged CAINC6N cells 2020–2024: **122** — (D) 117, (NA) 5, (NM) 0, (L) 0.
 
 ## 5. NAICSP codes by survey year (Orleans place-of-work universe)
 
