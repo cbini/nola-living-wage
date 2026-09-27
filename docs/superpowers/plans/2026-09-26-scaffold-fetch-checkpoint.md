@@ -41,6 +41,8 @@
 - The BLS v1 API works without a key: `CUUR0300SA0` returns monthly data through 2026-08.
 - **BEA access (2026-09-27).** A proxy-held API credential only works with POST, and it breaks every GET to `apps.bea.gov`, including the bulk ZIPs. For the implementation session, the credential is replaced by a `BEA_API_KEY` environment variable, and `apps.bea.gov` is added to allowed domains. The ZIP layout wasn't observable from this session, so **Task 5, Step 0 verifies it first.** The Census API is GET-only, hence the PUMS bulk files.
 
+- **BEA ZIP layout, verified live 2026-09-27 (Task 5 Step 0).** All seven ZIPs download with a plain GET (200). Each holds `{TABLE}__ALL_AREAS_{y0}_{y1}.csv` plus per-state `{TABLE}_{ST}_{y0}_{y1}.csv`, `__definition.xml` and `__Footnotes.html`; `SAGDP.zip` holds SAGDP1–11 (incl. SAGDP2/3/4/7), `SAINC.zip` holds SAINC1, `SAPCE.zip` holds SAPCE1–5. Header: `GeoFIPS,GeoName,Region,TableName,LineCode,IndustryClassification,Description,Unit,<year columns>`. `GeoFIPS` is quoted with a leading space (` "22071"`). Suppression appears in the value cell as `(D)`; `(NA)` also occurs (CAINC6N, SAGDP2). The last four lines are notes (`Note: See the included footnote file.`, table title, `Last updated: …`, `U.S. Bureau of Economic Analysis`). Units seen: `Thousands of dollars` (county tables, SAGDP3/4/7), `Millions of current dollars` (SAGDP2). ASCII. Orleans CAINC5N line 50: 2020 = 11,644,740 and 2024 = 14,206,017 (thousands), matching the API; CAINC5N line 200 (Mining) 2024 = `(D)`. County files cover 2001–2024; SAGDP2 runs to 2025.
+
 ## File Structure
 
 ```

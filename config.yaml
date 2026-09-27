@@ -43,7 +43,14 @@ bea:
   zips: [CAGDP2, CAINC5N, CAINC6N, CAINC1, SAGDP, SAINC, SAPCE]
   wages_line: {table: CAINC5N, line: "50"}
   wages_crosscheck: {table: CAINC6N, line: "5"}
+  state_abbr: "LA"          # per-state CSV inside each ZIP carries the county and state rows
   suppression_flags: ["(D)", "(NA)", "(NM)", "(L)"]
+  unit_scale:               # file Unit column -> multiplier to dollars (or 1 for non-dollar units)
+    "Thousands of dollars": 1000
+    "Millions of current dollars": 1000000
+    "Millions of dollars": 1000000
+    "Dollars": 1
+    "Number of persons": 1
 
 universe:
   cow_wage: ["1", "2", "3", "4", "5"]

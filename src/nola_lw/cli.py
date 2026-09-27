@@ -13,6 +13,9 @@ def fetch(cfg, only: str | None, refresh_mit: bool) -> None:
         elif src == "bls":
             from nola_lw.fetch import bls
             print("bls:", bls.fetch_cpi(cfg))
+        elif src == "bea":
+            from nola_lw.fetch import bea
+            print("bea:", *bea.fetch_zips(cfg))
         else:
             raise SystemExit(f"fetch {src}: not implemented")
 
