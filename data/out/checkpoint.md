@@ -74,22 +74,32 @@ Weighted persons with `POWSP` = 022, by `POWPUMA` and survey year (5-year weight
 
 ## 2. Survey WAGP vs. BEA wages and salaries (place of work)
 
-Survey (avg year, 2024$, ADJINC applied): $12,744,292,960 ± 417,711,003 (90% MOE), 9,627 person records.
+Universe: `POWSP` = 022, `POWPUMA` in ['02400'], `COW` in ['1', '2', '3', '4', '5'], `WAGP` > 0; any state of residence. Survey = Σ PWGTP·WAGP·ADJINC/1e6 (5-year weights → an average year, 2024 dollars). BEA = 2020–2024 mean of CAINC5N line 50, each year put in 2024 dollars by CPI-U South annual averages.
 
-CAINC5N line 50, nominal dollars:
+| year | value | defl | value_2024usd |
+|---|---|---|---|
+| 2020 | 11,644,740,000 | 1.2274 | 14,293,105,615 |
+| 2021 | 12,261,593,000 | 1.1681 | 14,323,253,762 |
+| 2022 | 13,218,330,000 | 1.0759 | 14,221,145,469 |
+| 2023 | 13,650,647,000 | 1.0296 | 14,054,287,602 |
+| 2024 | 14,206,017,000 | 1.0000 | 14,206,017,000 |
 
-| year | value | flag |
-|---|---|---|
-| 2020 | 11,644,740,000 |  |
-| 2021 | 12,261,593,000 |  |
-| 2022 | 13,218,330,000 |  |
-| 2023 | 13,650,647,000 |  |
-| 2024 | 14,206,017,000 |  |
+| measure | value |
+|---|---|
+| survey (avg year, 2024$) | $12,744,292,960 ± 417,711,003 (90% MOE) |
+| BEA (avg 2020–24, 2024$) | $14,219,561,890 |
+| difference | -10.4% ± 2.9% (survey sampling error only) |
+| person records | 9,627 |
 
-**BLOCKED: missing BLS CPI CUUR0300SA0 to put BEA 2020–2023 in 2024 dollars, so the % difference is not computed.**
+**Within ±15%.**
+
+Caveats: POWPUMA describes the job held last week, so people with wages in the past 12 months but not at work last week are outside this universe; WAGP is all wage income from all jobs, some possibly outside Orleans; BEA counts wages by place of work including non-survey items (e.g. military, some in-kind pay).
+
 ## 3. MIT stated price basis
 
 Snapshot `mit_counties_22071_2026-09-27.csv`: MIT's methodology page says figures are adjusted to **December 2025 dollars**. Config `cpi.target` = `2025-12`. Floor (a1_w1_c0) = $20.29/hr.
+
+CPI factor 2025-12 ÷ 2024 average (CUUR0300SA0): **1.0278**.
 
 ## 4. GDP in BEA "(D)" cells; suppressed CAINC6N cells
 

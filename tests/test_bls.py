@@ -36,3 +36,14 @@ def test_cpi_factor_incomplete_base_year():
 def test_failed_request_is_fatal():
     with pytest.raises(RuntimeError, match="daily threshold"):
         check_response({"status": "REQUEST_NOT_PROCESSED", "message": ["daily threshold reached"], "Results": {}})
+
+
+def test_unpublished_month_is_missing_not_a_crash():
+    # BLS marks unpublished months with value "-" (October 2025 was never published)
+    d = json.loads(json.dumps(FIX))
+    d["Results"]["series"][0]["data"].append({"year": "2025", "period": "M10", "value": "-", "footnotes": [{}]})
+    d["Results"]["series"][0]["data"] = [r for r in d["Results"]["series"][0]["data"]
+                                         if not (r["year"] == "2025" and r["period"] == "M10" and r["value"] != "-")]
+    assert cpi_factor(d, 2024, "2025-12") == pytest.approx(1.05)
+    with pytest.raises(ValueError, match="2025-10"):
+        cpi_factor(d, 2024, "2025-10")

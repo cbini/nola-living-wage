@@ -19,7 +19,9 @@ def check_response(d: dict) -> dict:
 
 def _monthly(cpi_json: dict) -> dict[str, float]:
     series = cpi_json["Results"]["series"][0]["data"]
-    return {f"{r['year']}-{r['period'][1:]}": float(r["value"]) for r in series if r["period"] != "M13"}
+    # "-" = not published (e.g. 2025-10, lapse in appropriations): treated as missing, never filled
+    return {f"{r['year']}-{r['period'][1:]}": float(r["value"]) for r in series
+            if r["period"] != "M13" and r["value"] != "-"}
 
 
 def annual_mean(cpi_json: dict, year: int) -> float:

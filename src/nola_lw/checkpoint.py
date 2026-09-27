@@ -160,9 +160,9 @@ def _section_wages(persons, bea, cpi_json, cfg) -> str:
           "Survey = Σ PWGTP·WAGP·ADJINC/1e6 (5-year weights → an average year, 2024 dollars). "
           "BEA = 2020–2024 mean of {t} line {l}, each year put in 2024 dollars by CPI-U South annual averages.\n\n").format(
         p=cfg["orleans"]["powsp"], pp=cfg["orleans"]["powpuma"], cow=cfg["universe"]["cow_wage"], t=w["table"], l=w["line"])
-    s += _md_table(yrs) + "\n\n"
+    s += _md_table(yrs.with_columns(pl.col("defl").map_elements(lambda x: f"{x:.4f}", return_dtype=pl.Utf8))) + "\n\n"
     s += (f"| measure | value |\n|---|---|\n| survey (avg year, 2024$) | ${r['survey']:,.0f} ± {r['survey_moe']:,.0f} (90% MOE) |\n"
-          f"| BEA (avg 2020–24, 2024$) | ${r['bea']:,.0f} |\n| difference | {r['pct_diff']:+.1%} ± {r['pct_moe']:.1%} |\n"
+          f"| BEA (avg 2020–24, 2024$) | ${r['bea']:,.0f} |\n| difference | {r['pct_diff']:+.1%} ± {r['pct_moe']:.1%} (survey sampling error only) |\n"
           f"| person records | {r['n_records']:,} |\n\n")
     tol = cfg["checkpoint"]["wage_tolerance"]
     s += (f"**{'FLAG: beyond' if r['flag'] else 'Within'} ±{tol:.0%}.**\n\n")
