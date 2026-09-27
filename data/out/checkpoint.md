@@ -123,6 +123,8 @@ Universe: `POWSP` = 022, `POWPUMA` in ['02400'], `COW` in ['1', '2', '3', '4', '
 | difference | -10.3% ± 2.9% (survey sampling error only) |
 | person records | 9,628 |
 
+Like-for-like with BEA (`COW` in ['1', '2', '3', '4', '5', '7']: adds salaries that owners of incorporated businesses pay themselves, which BEA counts as wages; still excluded from the living-wage analysis): survey $13,663,744,425 ± 431,723,568, difference **-3.9% ± 3.0%**.
+
 **Within ±15%.**
 
 Caveats: POWPUMA describes the job held last week, so people with wages in the past 12 months but not at work last week are outside this universe; WAGP is all wage income from all jobs, some possibly outside Orleans; BEA counts wages by place of work including non-survey items (e.g. military, some in-kind pay).

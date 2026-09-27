@@ -33,11 +33,11 @@ def basis_month(basis: str) -> str:
     return datetime.strptime(basis, "%B %Y").strftime("%Y-%m")
 
 
-def wage_check(persons: pl.DataFrame, bea_wages_2024usd: float, cfg) -> dict:
+def wage_check(persons: pl.DataFrame, bea_wages_2024usd: float, cfg, cow: list[str] | None = None) -> dict:
     """Survey WAGP (average year, ADJINC dollars) for the place-of-work universe vs. BEA wages and salaries."""
     o, u = cfg["orleans"], cfg["universe"]
     df = persons.filter((pl.col("POWSP") == o["powsp"]) & pl.col("POWPUMA").is_in(o["powpuma"])
-                        & pl.col("COW").is_in(u["cow_wage"]) & (pl.col("WAGP") > 0))
+                        & pl.col("COW").is_in(cow or u["cow_wage"]) & (pl.col("WAGP") > 0))
     df = df.with_columns(wagp_adj=pl.col("WAGP") * pl.col("ADJINC") / 1e6)
     survey, se = weighted_total(df, "wagp_adj")
     pct = survey / bea_wages_2024usd - 1
@@ -185,6 +185,7 @@ def _section_wages(persons, bea, cpi_json, cfg) -> str:
                     + _blocked(f"BLS CPI {cfg['cpi']['series']} to put BEA 2020–2023 in 2024 dollars, so the % difference is not computed"))
     bea_2024, yrs = bea_wages_2024usd(bea, cpi_json, cfg)
     r = wage_check(persons, bea_2024, cfg)
+    r2 = wage_check(persons, bea_2024, cfg, cow=cfg["checkpoint"]["wage_check_cow_bea"])
     s += ("Universe: `POWSP` = {p}, `POWPUMA` in {pp}, `COW` in {cow}, `WAGP` > 0; any state of residence. "
           "Survey = Σ PWGTP·WAGP·ADJINC/1e6 (5-year weights → an average year, 2024 dollars). "
           "BEA = {y0}–{y1} mean of {t} line {l}, each year put in {b} dollars by {cs} annual averages.\n\n").format(
@@ -193,7 +194,10 @@ def _section_wages(persons, bea, cpi_json, cfg) -> str:
     s += _md_table(yrs.with_columns(pl.col("defl").map_elements(lambda x: f"{x:.4f}", return_dtype=pl.Utf8))) + "\n\n"
     s += (f"| measure | value |\n|---|---|\n| survey (avg year, 2024$) | ${r['survey']:,.0f} ± {r['survey_moe']:,.0f} (90% MOE) |\n"
           f"| BEA (avg {cfg['years']['pool'][0]}–{cfg['years']['pool'][1]}, {cfg['cpi']['base_year']}$) | ${r['bea']:,.0f} |\n| difference | {r['pct_diff']:+.1%} ± {r['pct_moe']:.1%} (survey sampling error only) |\n"
-          f"| person records | {r['n_records']:,} |\n\n")
+          f"| person records | {r['n_records']:,} |\n\n"
+          f"Like-for-like with BEA (`COW` in {cfg['checkpoint']['wage_check_cow_bea']}: adds salaries that owners of "
+          f"incorporated businesses pay themselves, which BEA counts as wages; still excluded from the living-wage analysis): "
+          f"survey ${r2['survey']:,.0f} ± {r2['survey_moe']:,.0f}, difference **{r2['pct_diff']:+.1%} ± {r2['pct_moe']:.1%}**.\n\n")
     tol = cfg["checkpoint"]["wage_tolerance"]
     s += (f"**{'FLAG: beyond' if r['flag'] else 'Within'} ±{tol:.0%}.**\n\n")
     s += ("Caveats: POWPUMA describes the job held last week, so people with wages in the past 12 months but not at work "

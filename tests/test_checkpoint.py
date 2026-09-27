@@ -94,3 +94,10 @@ def test_load_persons_file_names_from_config(tmp_path):
     cfg["pums"]["bulk_state_fips"] = {"la": "22", "ms": "99"}
     _, missing = _load_persons(tmp_path, cfg)
     assert any("psam_p99.csv" in m for m in missing)
+
+
+def test_wage_check_like_for_like_includes_owner_salaries():
+    df = pl.concat([_persons([50]), _persons([30], cow="7"), _persons([1000], cow="6")])
+    assert wage_check(df, 100.0, CFG)["survey"] == pytest.approx(50)
+    r = wage_check(df, 100.0, CFG, cow=CFG["checkpoint"]["wage_check_cow_bea"])
+    assert r["survey"] == pytest.approx(80)
