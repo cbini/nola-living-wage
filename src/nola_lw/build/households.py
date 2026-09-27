@@ -1,12 +1,8 @@
-"""SPEC §5, §11.5: MIT family units and the 12-cell household table (Decisions 1-3)."""
+"""SPEC §5, §11.5: MIT family units (Decisions 1-3). See analysis/gaps.py for household_table."""
 import csv
 from pathlib import Path
 
 import polars as pl
-
-from nola_lw.analysis.gaps import add_floor_gap, wsum
-from nola_lw.analysis.se import replicate_estimate
-from nola_lw.fetch.mit import HOUSEHOLD_KEYS
 
 REFERENCE = "20"
 SPOUSE_PARTNER = ["21", "22", "23", "24"]
@@ -75,41 +71,3 @@ def load_thresholds(cfg, snapshot_dir: Path = Path("data/snapshots")) -> dict[st
         raise FileNotFoundError(f"no MIT snapshot data/snapshots/mit_{area}_*.csv")
     rows = list(csv.DictReader(snaps[-1].open()))
     return {r["household"]: float(r["hourly"]) for r in rows}
-
-
-def _workers_share_gap(g: pl.DataFrame) -> tuple:
-    """workers, share_below, total_gap (each est, se) from an `add_floor_gap`-shaped frame."""
-    workers = replicate_estimate(g, lambda d, w: wsum(d, w))
-    share_below = replicate_estimate(g, lambda d, w: wsum(d.filter(pl.col("below")), w) / wsum(d, w))
-    total_gap = replicate_estimate(g, lambda d, w: wsum(d, w, "gap_yr"))
-    return workers, share_below, total_gap
-
-
-def household_table(u_typed: pl.DataFrame, thresholds: dict[str, float], hours_full_time: int) -> pl.DataFrame:
-    """12 rows in `HOUSEHOLD_KEYS` order: workers, share/gap below own threshold and the floor, annually and hourly."""
-    floor = thresholds[HOUSEHOLD_KEYS[0]]
-    stat_names = ["workers", "share_below_own", "gap_own", "share_below_floor", "annual_share_below", "annual_gap"]
-    rows = []
-    for key in HOUSEHOLD_KEYS:
-        sub = u_typed.filter(pl.col("household") == key)
-        if sub.height == 0:
-            rows.append({"household": key} | {f"{n}{suf}": 0.0 for n in stat_names for suf in ("", "_se")})
-            continue
-        own = thresholds[key]
-        annual_own = own * hours_full_time
-        workers, share_below_own, gap_own = _workers_share_gap(add_floor_gap(sub, own))
-        _, share_below_floor, _ = _workers_share_gap(add_floor_gap(sub, floor))
-        annual = sub.with_columns(annual_gap=(pl.lit(annual_own) - pl.col("earnings")).clip(lower_bound=0))
-        annual_below = replicate_estimate(
-            annual, lambda d, w: wsum(d.filter(pl.col("earnings") < annual_own), w) / wsum(d, w))
-        annual_gap = replicate_estimate(annual, lambda d, w: wsum(d, w, "annual_gap"))
-        rows.append({
-            "household": key,
-            "workers": workers[0], "workers_se": workers[1],
-            "share_below_own": share_below_own[0], "share_below_own_se": share_below_own[1],
-            "gap_own": gap_own[0], "gap_own_se": gap_own[1],
-            "share_below_floor": share_below_floor[0], "share_below_floor_se": share_below_floor[1],
-            "annual_share_below": annual_below[0], "annual_share_below_se": annual_below[1],
-            "annual_gap": annual_gap[0], "annual_gap_se": annual_gap[1],
-        })
-    return pl.DataFrame(rows)

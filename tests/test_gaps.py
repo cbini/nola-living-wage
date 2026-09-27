@@ -37,6 +37,44 @@ def test_floor_summary_hand_computed():
     assert s["mean_short_yr"][0] == pytest.approx(10_000.0)
 
 
+def test_household_table_has_12_rows_in_order():
+    thresholds = {k: 10.0 + i for i, k in enumerate(gaps.HOUSEHOLD_KEYS)}
+    u = pl.DataFrame({
+        "household": ["a1_w1_c0", "a2_w2_c1"],
+        "wage_hr": [8.0, 30.0],
+        "hours": [2000.0, 2000.0],
+        "earnings": [16_000.0, 60_000.0],
+        "PWGTP": [10, 20],
+    } | {f"PWGTP{i}": [10, 20] for i in range(1, 81)})
+    out = gaps.household_table(u, thresholds, hours_full_time=2000, floor_type="a1_w1_c0")
+    assert out["household"].to_list() == gaps.HOUSEHOLD_KEYS
+    row0 = out.filter(pl.col("household") == "a1_w1_c0").row(0, named=True)
+    assert row0["workers"] == pytest.approx(10)
+    assert row0["share_below_own"] == pytest.approx(1.0)
+    assert row0["gap_own"] == pytest.approx((10.0 - 8.0) * 2000 * 10)
+    assert row0["annual_share_below"] == pytest.approx(1.0)
+    assert row0["annual_gap"] == pytest.approx((10.0 * 2000 - 16_000.0) * 10)
+    other_row = out.filter(pl.col("household") == "a2_w1_c0").row(0, named=True)
+    assert other_row["workers"] == pytest.approx(0)
+
+
+def test_household_table_empty_cell_is_null_not_zero():
+    thresholds = {k: 10.0 + i for i, k in enumerate(gaps.HOUSEHOLD_KEYS)}
+    u = pl.DataFrame({
+        "household": ["a1_w1_c0"],
+        "wage_hr": [8.0],
+        "hours": [2000.0],
+        "earnings": [16_000.0],
+        "PWGTP": [10],
+    } | {f"PWGTP{i}": [10] for i in range(1, 81)})
+    out = gaps.household_table(u, thresholds, hours_full_time=2000, floor_type="a1_w1_c0")
+    empty = out.filter(pl.col("household") == "a2_w2_c3").row(0, named=True)
+    assert empty["workers"] == pytest.approx(0)
+    for col in ["share_below_own", "gap_own", "share_below_floor", "annual_share_below", "annual_gap"]:
+        assert empty[col] is None
+        assert empty[f"{col}_se"] is None
+
+
 def test_leakage_shares_sum_to_one():
     df = pl.DataFrame({
         "wage_hr": [15.0, 18.0, 25.0],

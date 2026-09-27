@@ -1,7 +1,9 @@
-"""SPEC §5, §11.4: floor gap and replicate-weight SEs. Ratios are computed inside each replicate."""
+"""SPEC §5, §11.4-11.5: floor gap, the 12-cell household table, and replicate-weight SEs.
+Ratios are computed inside each replicate."""
 import polars as pl
 
 from nola_lw.analysis.se import N_REPS, replicate_estimate
+from nola_lw.fetch.mit import HOUSEHOLD_KEYS
 
 SUMMARY_KEYS = ["workers", "below", "share_below", "total_gap", "mean_short_hr", "mean_short_yr"]
 
@@ -60,4 +62,52 @@ def leakage(u: pl.DataFrame) -> pl.DataFrame:
         sg = replicate_estimate(u, lambda d, w, here=here: wsum(d.filter(here), w, "gap_yr") / wsum(d, w, "gap_yr"))
         rows.append({"residence": val, "share_workers": sw[0], "share_workers_se": sw[1],
                      "share_gap": sg[0], "share_gap_se": sg[1]})
+    return pl.DataFrame(rows)
+
+
+def _safe_ratio(num: float, den: float) -> float:
+    """0.0 rather than a ZeroDivisionError when a replicate's weighted denominator is 0."""
+    return num / den if den else 0.0
+
+
+def _share_and_gap(g: pl.DataFrame) -> tuple[tuple[float, float], tuple[float, float]]:
+    """(share_below, se), (total_gap, se) from an `add_floor_gap`-shaped, non-empty frame."""
+    share_below = replicate_estimate(g, lambda d, w: _safe_ratio(wsum(d.filter(pl.col("below")), w), wsum(d, w)))
+    total_gap = replicate_estimate(g, lambda d, w: wsum(d, w, "gap_yr"))
+    return share_below, total_gap
+
+
+def household_table(u_typed: pl.DataFrame, thresholds: dict[str, float], hours_full_time: int,
+                     floor_type: str) -> pl.DataFrame:
+    """12 rows in `HOUSEHOLD_KEYS` order: workers, share/gap below own threshold and the floor, annually and hourly.
+
+    An empty cell reports `workers` = 0 but null shares/gaps (and their SEs) rather than 0.0, which would
+    misleadingly read as "0% below"."""
+    floor = thresholds[floor_type]
+    null_stats = ["share_below_own", "gap_own", "share_below_floor", "annual_share_below", "annual_gap"]
+    rows = []
+    for key in HOUSEHOLD_KEYS:
+        sub = u_typed.filter(pl.col("household") == key)
+        if sub.height == 0:
+            rows.append({"household": key, "workers": 0.0, "workers_se": 0.0}
+                        | {f"{n}{suf}": None for n in null_stats for suf in ("", "_se")})
+            continue
+        own = thresholds[key]
+        annual_own = own * hours_full_time
+        workers = replicate_estimate(sub, lambda d, w: wsum(d, w))
+        share_below_own, gap_own = _share_and_gap(add_floor_gap(sub, own))
+        share_below_floor, _ = _share_and_gap(add_floor_gap(sub, floor))
+        annual = sub.with_columns(annual_gap=(pl.lit(annual_own) - pl.col("earnings")).clip(lower_bound=0))
+        annual_share = replicate_estimate(
+            annual, lambda d, w: _safe_ratio(wsum(d.filter(pl.col("earnings") < annual_own), w), wsum(d, w)))
+        annual_gap = replicate_estimate(annual, lambda d, w: wsum(d, w, "annual_gap"))
+        rows.append({
+            "household": key,
+            "workers": workers[0], "workers_se": workers[1],
+            "share_below_own": share_below_own[0], "share_below_own_se": share_below_own[1],
+            "gap_own": gap_own[0], "gap_own_se": gap_own[1],
+            "share_below_floor": share_below_floor[0], "share_below_floor_se": share_below_floor[1],
+            "annual_share_below": annual_share[0], "annual_share_below_se": annual_share[1],
+            "annual_gap": annual_gap[0], "annual_gap_se": annual_gap[1],
+        })
     return pl.DataFrame(rows)

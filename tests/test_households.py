@@ -1,5 +1,4 @@
 import polars as pl
-import pytest
 
 from nola_lw.build import households as h
 from nola_lw.config import load_config
@@ -123,23 +122,3 @@ def test_commuter_household_typed_from_parquet():
     la = out.filter(pl.col("src") == "la")
     assert la["household"].to_list() == ["a1_w1_c0"]
 
-
-def test_household_table_has_12_rows_in_order():
-    thresholds = {k: 10.0 + i for i, k in enumerate(h.HOUSEHOLD_KEYS)}
-    u = pl.DataFrame({
-        "household": ["a1_w1_c0", "a2_w2_c1"],
-        "wage_hr": [8.0, 30.0],
-        "hours": [2000.0, 2000.0],
-        "earnings": [16_000.0, 60_000.0],
-        "PWGTP": [10, 20],
-    } | {f"PWGTP{i}": [10, 20] for i in range(1, 81)})
-    out = h.household_table(u, thresholds, hours_full_time=2000)
-    assert out["household"].to_list() == h.HOUSEHOLD_KEYS
-    row0 = out.filter(pl.col("household") == "a1_w1_c0").row(0, named=True)
-    assert row0["workers"] == pytest.approx(10)
-    assert row0["share_below_own"] == pytest.approx(1.0)
-    assert row0["gap_own"] == pytest.approx((10.0 - 8.0) * 2000 * 10)
-    assert row0["annual_share_below"] == pytest.approx(1.0)
-    assert row0["annual_gap"] == pytest.approx((10.0 * 2000 - 16_000.0) * 10)
-    other_row = out.filter(pl.col("household") == "a2_w1_c0").row(0, named=True)
-    assert other_row["workers"] == pytest.approx(0)
