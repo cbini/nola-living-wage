@@ -54,12 +54,17 @@ def download(url: str, dest: Path, *, params: dict | None = None, client: httpx.
         if own:
             client.close()
     os.replace(tmp, dest)
+    record(full_url, dest, manifest)
+    return dest
+
+
+def record(url: str, dest: Path, manifest: Path = MANIFEST) -> None:
+    """Append a manifest row for a file already written to dest."""
     manifest.parent.mkdir(parents=True, exist_ok=True)
     new = not manifest.exists()
     with manifest.open("a", newline="") as f:
         w = csv.DictWriter(f, FIELDS)
         if new:
             w.writeheader()
-        w.writerow({"url": redact(full_url), "fetched_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        w.writerow({"url": redact(url), "fetched_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     "sha256": sha256(dest), "bytes": dest.stat().st_size, "path": str(dest)})
-    return dest

@@ -10,6 +10,9 @@ def fetch(cfg, only: str | None, refresh_mit: bool) -> None:
         if src == "mit":
             from nola_lw.fetch import mit
             print("mit:", mit.scrape(cfg, refresh=refresh_mit))
+        elif src == "bls":
+            from nola_lw.fetch import bls
+            print("bls:", bls.fetch_cpi(cfg))
         else:
             raise SystemExit(f"fetch {src}: not implemented")
 
