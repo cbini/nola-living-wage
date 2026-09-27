@@ -108,17 +108,20 @@ def headline(ctx: dict) -> tuple[str, list[str]]:
             f"workers whose job is in Orleans Parish ({f.pct(*ps['share_below'])}) earned less than the MIT living-wage "
             f"floor ({_household_label(cfg['mit']['floor_type'])}), ${ctx['floor']:.2f} an hour in {charts.price_month(cfg)} dollars. "
             f"Raising each of them to that floor for the hours they actually work would cost {f.usd(*ps['total_gap'])} "
-            f"a year. That is {f.pct(tot['gap_gdp'], tot['gap_gdp_se'])} of Orleans GDP, "
-            f"{f.pct(tot['gap_comp'], tot['gap_comp_se'])} of employee compensation and "
-            f"{f.pct(tot['gap_wages'], tot['gap_wages_se'])} of wage and salary disbursements. "
+            f"a year, {f.pct(tot['gap_wages'], tot['gap_wages_se'])} of wage and salary disbursements. With the "
+            f"employer's share of payroll taxes ({cfg['capacity']['employer_payroll_tax_rate']:.2%}), the cost to "
+            f"employers is {f.usd(tot['cost'], tot['cost_se'])} a year: "
+            f"{f.pct(tot['gap_gdp'], tot['gap_gdp_se'])} of Orleans GDP and "
+            f"{f.pct(tot['gap_comp'], tot['gap_comp_se'])} of employee compensation. "
+            f"Every comparison below uses that employer cost. "
             f"Against modeled gross operating surplus (GOS, upper bound; lower bound nets out depreciation): "
-            f"(a) the private and nonprofit gap is {f.pct(*gt['private_upper'])} of private-industry GOS "
-            f"({f.pct(*gt['private_lower'])} at the lower bound), and (b) the all-sector gap is "
+            f"(a) the private and nonprofit employer cost is {f.pct(*gt['private_upper'])} of private-industry GOS "
+            f"({f.pct(*gt['private_lower'])} at the lower bound), and (b) the all-sector employer cost is "
             f"{f.pct(*gt['total_upper'])} of total GOS ({f.pct(*gt['total_lower'])} at the lower bound). "
             f"Excluding {labels[cfg['capacity']['imputed_rent_line']].lower()}, whose GOS includes imputed rent on "
             f"owner-occupied housing, (b) is {f.pct(*gt['total_upper_ex'])} ({f.pct(*gt['total_lower_ex'])} at the "
             f"lower bound). "
-            f"The government workers' gap would be a {f.pct(*gt['government'])} raise to government compensation. ")
+            f"The government workers' employer cost would be a {f.pct(*gt['government'])} raise to government compensation. ")
 
     fails = _failures(cap, labels)
     if fails:
@@ -139,7 +142,7 @@ def headline(ctx: dict) -> tuple[str, list[str]]:
                 mark += "[^gos-low]"
             which = {"both": "both bounds", "upper": "upper bound only", "lower": "lower bound only"}[bound]
             items.append(f"{labels[line]} ({which}){mark}")
-        text += (f"By the self-funding test (an industry fails when its gap exceeds its own GOS), "
+        text += (f"By the self-funding test (an industry fails when its employer cost exceeds its own GOS), "
                  f"{len(fails)} {'industry fails' if len(fails) == 1 else 'industries fail'}: {_join(items)}. ")
         if neg_low:
             gaps = "; ".join(f"{labels[ln]} gap {f.usd(_row(cap, 'line', ln)['gap'])}" for ln in neg_low)
@@ -151,7 +154,7 @@ def headline(ctx: dict) -> tuple[str, list[str]]:
     for line in cfg["report"]["spec_expected_fail"]:
         r = _row(cap, "line", line)
         if r is not None and r["self_funding"] == "pass" and r["self_funding_low"] == "pass":
-            text += (f"{labels[line]}, which SPEC §6 expected to fail, passes both bounds: its gap is "
+            text += (f"{labels[line]}, which SPEC §6 expected to fail, passes both bounds: its employer cost is "
                      f"{f.pct(r['gap_gos'], r['gap_gos_se'])} of its upper-bound GOS and "
                      f"{f.pct(r['gap_gos_low'], r['gap_gos_low_se'])} of its lower bound. ")
     supp = [labels[ln] for ln in labels if (r := _row(cap, "line", ln)) and r["self_funding"] == "suppressed"]
@@ -246,20 +249,24 @@ def _tables(ctx: dict) -> str:
 
     def rat(r, c):
         return f.pct(r[c], r[f"{c}_se"])
-    rows = [["All-sector gap ÷ GDP", rat(tp, "gap_gdp"), rat(ts, "gap_gdp")],
-            ["All-sector gap ÷ employee compensation", rat(tp, "gap_comp"), rat(ts, "gap_comp")],
+    rows = [["All-sector employer cost ÷ GDP", rat(tp, "gap_gdp"), rat(ts, "gap_gdp")],
+            ["All-sector employer cost ÷ employee compensation", rat(tp, "gap_comp"), rat(ts, "gap_comp")],
             ["All-sector gap ÷ wage and salary disbursements", rat(tp, "gap_wages"), rat(ts, "gap_wages")]]
-    for key, name in [("private_upper", "(a) Private + nonprofit gap ÷ private GOS, upper bound"),
-                      ("private_lower", "(a) Private + nonprofit gap ÷ private GOS, lower bound"),
-                      ("total_upper", "(b) All-sector gap ÷ total GOS, upper bound"),
-                      ("total_lower", "(b) All-sector gap ÷ total GOS, lower bound"),
+    for key, name in [("private_upper", "(a) Private + nonprofit employer cost ÷ private GOS, upper bound"),
+                      ("private_lower", "(a) Private + nonprofit employer cost ÷ private GOS, lower bound"),
+                      ("total_upper", "(b) All-sector employer cost ÷ total GOS, upper bound"),
+                      ("total_lower", "(b) All-sector employer cost ÷ total GOS, lower bound"),
                       ("private_upper_ex", f"(a) excluding {rent_label}, upper bound"),
                       ("private_lower_ex", f"(a) excluding {rent_label}, lower bound"),
                       ("total_upper_ex", f"(b) excluding {rent_label}, upper bound"),
                       ("total_lower_ex", f"(b) excluding {rent_label}, lower bound"),
-                      ("government", "Government gap ÷ government compensation")]:
+                      ("government", "Government employer cost ÷ government compensation")]:
         rows.append([name, *_two(f.pct, p["gos_tests"], s["gos_tests"], key)])
     out.append(_table(["Ratio", yp, ys], rows))
+    out.append(f"\nEmployer cost is the gap plus the employer's share of payroll taxes "
+               f"({cfg['capacity']['employer_payroll_tax_rate']:.2%}); GDP, compensation and GOS all include those taxes. "
+               "Wage and salary disbursements do not, so that row uses the gap alone. Rows (a), (b) and government use "
+               "employer cost.\n")
     out.append(f"\n\"Excluding {rent_label}\" removes that industry's gap from the numerator and its GOS from the "
                "denominator: its GOS includes imputed rent on owner-occupied housing.\n")
     out.append(f"\nBEA denominators (average year, {charts.price_month(cfg)} dollars; place of work):\n")
@@ -276,7 +283,8 @@ def _tables(ctx: dict) -> str:
 
     # 4. industries
     out.append("\n## 4. Industries and the self-funding test\n")
-    out.append("An industry fails when its gap exceeds its own modeled GOS. The government line is excluded from "
+    out.append("An industry fails when its employer cost (gap plus employer payroll taxes) exceeds its own modeled GOS. "
+               "The ÷ columns use employer cost. The government line is excluded from "
                "the test (\"n/a\"; its BEA GOS is only depreciation) but its gap and gap ÷ compensation (payroll "
                "share) are shown.\n\n")
     rows = []

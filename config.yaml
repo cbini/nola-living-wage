@@ -89,6 +89,10 @@ capacity:
   # CAGDP2 real estate: its GOS includes imputed rent on owner-occupied housing (no employer pays wages from it);
   # table 3 and the headline also show the GOS tests with this line's gap and GOS removed
   imputed_rent_line: "56"
+  # employer Social Security (6.2%) + Medicare (1.45%): a raise costs the employer this much more than the raise.
+  # Loads the gap in every comparison with GDP, compensation or GOS (all include it), and the pass-through;
+  # not the comparison with wages (which exclude it) or the worker gaps themselves
+  employer_payroll_tax_rate: 0.0765
 
 crosswalk:
   gov_line: "83"

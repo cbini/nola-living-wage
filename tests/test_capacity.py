@@ -248,7 +248,7 @@ def test_gap_by_line_uses_config_private_classes():
 
 
 def test_gos_tests_nulls_ratio_for_nonpositive_denominator():
-    cfg = {"crosswalk": {"gov_line": "83"}, "capacity": {"imputed_rent_line": "56"},
+    cfg = {"crosswalk": {"gov_line": "83"}, "capacity": {"imputed_rent_line": "56", "employer_payroll_tax_rate": 0.0},
            "universe": {"cow_class": {"1": "private", "2": "nonprofit", "3": "public"}}}
     u = pl.DataFrame({
         "cow_class": ["private", "public"], "bea_line": ["11", "83"],
@@ -289,7 +289,7 @@ def test_zero_gap_with_suppressed_gos_stays_suppressed():
 
 def test_gos_tests_ex_imputed_rent_line():
     """Ex-real-estate tests drop the line's gap from the numerator and its GOS from the denominator."""
-    cfg = {"crosswalk": {"gov_line": "83"}, "capacity": {"imputed_rent_line": "56"},
+    cfg = {"crosswalk": {"gov_line": "83"}, "capacity": {"imputed_rent_line": "56", "employer_payroll_tax_rate": 0.0},
            "universe": {"cow_class": {"1": "private", "3": "public"}}}
     u = pl.DataFrame({
         "cow_class": ["private", "private", "public"], "bea_line": ["11", "56", "83"],
@@ -306,3 +306,36 @@ def test_gos_tests_ex_imputed_rent_line():
     assert out["private_lower_ex"][0] == pytest.approx(10e3 / 100e3)
     assert out["total_upper_ex"][0] == pytest.approx(20e3 / 400e3)
     assert out["total_lower_ex"][0] == pytest.approx(20e3 / 100e3)
+
+
+def test_capacity_table_loads_employer_payroll_tax_except_wages():
+    """Employer cost = gap * (1 + load) against GDP, comp and GOS (and the pass/fail test); wages stay unloaded."""
+    panel_mean = pl.DataFrame({"line": ["64"], "gdp": [1000.0], "comp": [500.0], "tax_ratio": [0.0],
+                               "cfc_share": [0.0], "gos": [105.0], "gos_low": [105.0], "wages": [400.0]},
+                              schema=PANEL_SCHEMA)
+    gap_by_line = pl.DataFrame({"line": ["64"], "gap": [100.0], "gap_se": [10.0]})
+    row = capacity.capacity_table(gap_by_line, panel_mean, "83", load=0.1).row(0, named=True)
+    assert row["cost"] == pytest.approx(110.0)
+    assert row["gap_gdp"] == pytest.approx(0.11) and row["gap_gdp_se"] == pytest.approx(0.011)
+    assert row["gap_comp"] == pytest.approx(0.22)
+    assert row["gap_gos"] == pytest.approx(110.0 / 105.0)
+    assert row["gap_wages"] == pytest.approx(0.25) and row["gap_wages_se"] == pytest.approx(0.025)
+    assert row["self_funding"] == "fail"  # 100 <= 105 but 110 > 105
+
+
+def test_gos_tests_load_employer_payroll_tax():
+    cfg = {"crosswalk": {"gov_line": "83"}, "capacity": {"imputed_rent_line": "56", "employer_payroll_tax_rate": 0.1},
+           "universe": {"cow_class": {"1": "private", "3": "public"}}}
+    u = pl.DataFrame({
+        "cow_class": ["private", "public"], "bea_line": ["11", "83"],
+        "wage_hr": [10.0] * 2, "hours": [2000.0] * 2,
+        "below": [True] * 2, "gap_hr": [5.0] * 2, "gap_yr": [10000.0, 10000.0],
+        "PWGTP": [1, 1],
+    } | {f"PWGTP{i}": [1, 1] for i in range(1, 81)})
+    panel_mean = pl.DataFrame({"line": ["private", "total", "83", "56"], "gos": [100e3, 100e3, 1.0, 1.0],
+                               "gos_low": [50e3, 50e3, 0.0, 0.0], "comp": [None, None, 1e6, None]},
+                              schema={"line": pl.Utf8, "gos": pl.Float64, "gos_low": pl.Float64, "comp": pl.Float64})
+    out = capacity.gos_tests(u, panel_mean, cfg)
+    assert out["private_upper"][0] == pytest.approx(11e3 / 100e3)
+    assert out["total_lower"][0] == pytest.approx(22e3 / 50e3)
+    assert out["government"][0] == pytest.approx(11e3 / 1e6)

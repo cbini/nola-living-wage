@@ -38,7 +38,8 @@ def _window(u: pl.DataFrame, panel: pl.DataFrame, thresholds: dict, years: list[
         "by_cow": summary_by(g, "cow_class"),
         "leakage": leakage(g),
         "households": household_table(sub, thresholds, cfg["mit"]["hours_full_time"], floor_type),
-        "capacity": cap.capacity_table(cap.gap_by_line(g, cfg), pm, cfg["crosswalk"]["gov_line"]),
+        "capacity": cap.capacity_table(cap.gap_by_line(g, cfg), pm, cfg["crosswalk"]["gov_line"],
+                                       cfg["capacity"]["employer_payroll_tax_rate"]),
         "gos_tests": cap.gos_tests(g, pm, cfg),
     }
 

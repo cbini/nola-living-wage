@@ -98,8 +98,9 @@ def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.Data
     bases = spending_bases(bea_ctx["bea"], bea_ctx["cpi_json"], cfg, years)
     for p in cfg["decisions"]["passthrough_p"]:
         for base_name, base_val in bases.items():
-            def gap_at(f: float, floor: float = floor) -> float:
-                return floor_summary(add_floor_gap(headline_u, floor * f))["total_gap"][0]
+            def gap_at(f: float, floor: float = floor) -> float:  # employer cost, with its payroll taxes
+                return (floor_summary(add_floor_gap(headline_u, floor * f))["total_gap"][0]
+                        * (1 + cfg["capacity"]["employer_payroll_tax_rate"]))
             factor = passthrough_factor(gap_at, base_val, p, sens["passthrough_tol"], sens["passthrough_max_iter"])
             summary = floor_summary(add_floor_gap(headline_u, floor * factor))
             rows.append(_row("passthrough", f"p={p} base={base_name}", summary, factor))

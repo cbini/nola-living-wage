@@ -174,28 +174,29 @@ def gap_by_line(u: pl.DataFrame, cfg) -> pl.DataFrame:
     return pl.concat([by_line, extra])
 
 
-def capacity_table(gap_by_line: pl.DataFrame, panel_mean: pl.DataFrame, gov_line: str) -> pl.DataFrame:
-    """One row per line: gap, gap_se, gdp, comp, gos, gos_low, gap_gdp/comp/gos/gos_low/wages (each
-    with its own _se = gap_se/denominator; null, not inf or sign-inverted, when the denominator is
-    <= 0), and self_funding / self_funding_low in {"pass", "fail", "suppressed", "no sample",
-    "n/a" (`gov_line`)}. "no sample" means no PUMS-observed gap for that line (a null after the
-    join), distinct from "suppressed" (a null GOS from a flagged BEA cell)."""
-    df = panel_mean.join(gap_by_line, on="line", how="left")
+def capacity_table(gap_by_line: pl.DataFrame, panel_mean: pl.DataFrame, gov_line: str,
+                   load: float = 0.0) -> pl.DataFrame:
+    """One row per line: gap, gap_se, cost (= gap * (1 + `load`), the employer's cost including its
+    payroll taxes, `capacity.employer_payroll_tax_rate`), gdp, comp, gos, gos_low,
+    gap_gdp/comp/gos/gos_low (cost / denominator, since compensation and GOS both include employer
+    payroll taxes) and gap_wages (gap / wages, since wages exclude them), each with its own _se;
+    null, not inf or sign-inverted, when the denominator is <= 0. self_funding / self_funding_low
+    in {"pass", "fail", "suppressed", "no sample", "n/a" (`gov_line`)} compare cost with GOS.
+    "no sample" means no PUMS-observed gap for that line (a null after the join), distinct from
+    "suppressed" (a null GOS from a flagged BEA cell)."""
+    df = panel_mean.join(gap_by_line, on="line", how="left").with_columns(
+        cost=pl.col("gap") * (1 + load), cost_se=pl.col("gap_se") * (1 + load))
 
-    def ratio(denom_col: str) -> pl.Expr:
+    def ratio(num: str, denom_col: str) -> pl.Expr:
         valid = pl.col(denom_col) > 0
-        return pl.when(valid).then(pl.col("gap") / pl.col(denom_col)).otherwise(None)
-
-    def ratio_se(denom_col: str) -> pl.Expr:
-        valid = pl.col(denom_col) > 0
-        return pl.when(valid).then(pl.col("gap_se") / pl.col(denom_col)).otherwise(None)
+        return pl.when(valid).then(pl.col(num) / pl.col(denom_col)).otherwise(None)
 
     df = df.with_columns(
-        gap_gdp=ratio("gdp"), gap_gdp_se=ratio_se("gdp"),
-        gap_comp=ratio("comp"), gap_comp_se=ratio_se("comp"),
-        gap_gos=ratio("gos"), gap_gos_se=ratio_se("gos"),
-        gap_gos_low=ratio("gos_low"), gap_gos_low_se=ratio_se("gos_low"),
-        gap_wages=ratio("wages"), gap_wages_se=ratio_se("wages"),
+        gap_gdp=ratio("cost", "gdp"), gap_gdp_se=ratio("cost_se", "gdp"),
+        gap_comp=ratio("cost", "comp"), gap_comp_se=ratio("cost_se", "comp"),
+        gap_gos=ratio("cost", "gos"), gap_gos_se=ratio("cost_se", "gos"),
+        gap_gos_low=ratio("cost", "gos_low"), gap_gos_low_se=ratio("cost_se", "gos_low"),
+        gap_wages=ratio("gap", "wages"), gap_wages_se=ratio("gap_se", "wages"),
     )
 
     def _status(gos_col: str) -> pl.Expr:
@@ -203,7 +204,7 @@ def capacity_table(gap_by_line: pl.DataFrame, panel_mean: pl.DataFrame, gov_line
                   .when(pl.col("gap").is_null()).then(pl.lit("no sample"))
                   .when(pl.col(gos_col).is_null()).then(pl.lit("suppressed"))
                   .when(pl.col("gap") == 0).then(pl.lit("pass"))  # nothing to fund, whatever the GOS
-                  .when(pl.col("gap") <= pl.col(gos_col)).then(pl.lit("pass"))
+                  .when(pl.col("cost") <= pl.col(gos_col)).then(pl.lit("pass"))
                   .otherwise(pl.lit("fail")))
     return df.with_columns(self_funding=_status("gos"), self_funding_low=_status("gos_low"))
 
@@ -213,8 +214,10 @@ def gos_tests(u: pl.DataFrame, panel_mean: pl.DataFrame, cfg) -> dict[str, tuple
     (upper, lower); government gap / government (`crosswalk.gov_line`) compensation; and "*_ex" for
     (a), (b) with the `capacity.imputed_rent_line` (real estate, whose GOS includes imputed rent on
     owner-occupied housing) removed from both gap and GOS. Each ratio is null (not inf or
-    sign-inverted) when its denominator is null or <= 0."""
+    sign-inverted) when its denominator is null or <= 0. Each numerator is the employer's cost, the
+    gap * (1 + `capacity.employer_payroll_tax_rate`)."""
     gov_line, rent_line = cfg["crosswalk"]["gov_line"], cfg["capacity"]["imputed_rent_line"]
+    load = 1 + cfg["capacity"]["employer_payroll_tax_rate"]
 
     def denom(line: str, col: str, ex: bool = False) -> float | None:
         d = panel_mean.filter(pl.col("line") == line)[col][0]
@@ -227,7 +230,7 @@ def gos_tests(u: pl.DataFrame, panel_mean: pl.DataFrame, cfg) -> dict[str, tuple
         if d is None or d <= 0:
             return None, None
         est, se = est_se
-        return est / d, se / d
+        return est * load / d, se * load / d
 
     private_gap = floor_summary(u.filter(pl.col("cow_class").is_in(_private_classes(cfg))))["total_gap"]
     total_gap = floor_summary(u)["total_gap"]

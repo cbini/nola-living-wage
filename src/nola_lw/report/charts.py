@@ -72,9 +72,9 @@ def gap_vs_gos(capacity: pl.DataFrame, labels: dict[str, str], cfg, out: Path = 
     ax.text(99, df.height - 0.5, "gap = GOS: fails beyond ", fontsize=8, color=INK, va="bottom", ha="right")
     ax.set_yticks(list(y), df["label"].to_list(), fontsize=8, color=INK)
     ax.set_xlim(0, ratio_axis_max(df))
-    ax.set_xlabel("Floor gap as % of the industry's modeled gross operating surplus (GOS)", color=INK2)
+    ax.set_xlabel("Employer cost of the floor gap (with payroll taxes) as % of the industry's modeled GOS", color=INK2)
     ax.legend(loc="lower right", frameon=False, fontsize=8, labelcolor=INK2)
-    fig.suptitle(f"Floor gap vs. modeled GOS, by industry ({_years(cfg)} average)", x=0.01, ha="left", color=INK)
+    fig.suptitle(f"Employer cost of the floor gap vs. modeled GOS, by industry ({_years(cfg)} average)", x=0.01, ha="left", color=INK)
     fig.tight_layout()
     path = out / "gap_vs_gos.png"
     fig.savefig(path, dpi=150, facecolor=SURFACE)
