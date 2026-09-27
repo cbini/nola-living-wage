@@ -38,7 +38,7 @@ def _extract(z: Path, dest: Path) -> list[Path]:
 
 def fetch_bulk(cfg, raw: Path = RAW) -> list[Path]:
     p = cfg["pums"]
-    out = [download(p["dictionary_url"], raw / Path(p["dictionary_url"]).name)]
+    out = [download(u, raw / Path(u).name) for u in (p["dictionary_url"], p["tract_to_puma_url"])]
     for st in p["bulk_states"]:
         for kind in ("p", "h"):
             z = download(f"{p['bulk_base']}/csv_{kind}{st}.zip", raw / f"csv_{kind}{st}.zip")

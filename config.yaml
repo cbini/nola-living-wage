@@ -33,6 +33,7 @@ pums:
                  pa, ri, sc, sd, tn, tx, ut, va, vt, wa, wi, wv, wy]
   dictionary_url: "https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2020-2024.csv"
   min_free_disk_gb: 5
+  tract_to_puma_url: "https://www2.census.gov/geo/docs/maps-data/data/rel2020/2020_Census_Tract_to_2020_PUMA.txt"
 
 bea:
   county_geo: "22071"
@@ -43,6 +44,9 @@ bea:
   zips: [CAGDP2, CAINC5N, CAINC6N, CAINC1, SAGDP, SAINC, SAPCE]
   wages_line: {table: CAINC5N, line: "50"}
   wages_crosscheck: {table: CAINC6N, line: "5"}
+  gdp_total_line: {table: CAGDP2, line: "1"}
+  # CAGDP2 top-level sectors (these sum to line 1 when nothing is suppressed)
+  gdp_sector_lines: ["3", "6", "10", "11", "12", "34", "35", "36", "45", "50", "59", "68", "75", "82", "83"]
   state_abbr: "LA"          # per-state CSV inside each ZIP carries the county and state rows
   suppression_flags: ["(D)", "(NA)", "(NM)", "(L)"]
   unit_scale:               # file Unit column -> multiplier to dollars (or 1 for non-dollar units)

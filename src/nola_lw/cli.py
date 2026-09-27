@@ -36,4 +36,5 @@ def main(argv: list[str] | None = None) -> None:
     if args.cmd in ("fetch", "all"):
         fetch(cfg, getattr(args, "only", None), args.refresh_mit)
     if args.cmd in ("checkpoint", "all"):
-        raise SystemExit("checkpoint: not implemented")
+        from nola_lw.checkpoint import write_report
+        print("checkpoint:", write_report(cfg))
