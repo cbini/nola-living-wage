@@ -30,7 +30,7 @@
 4. **Depreciation (lower-bound GOS).** Use the national CFC share of GDP by industry: BEA Fixed Assets `FAAt304ESI` (private current-cost depreciation) ÷ SAGDP2 US GDP for the same industry and year, times the county industry GDP. Government GOS is entirely CFC, so the government lower-bound GOS is 0.
 5. **Industry grain.** 20 BEA lines that partition the CAGDP2 total: 3, 6, 10, 11, 12, 34, 35, 36, 45, 51, 56, 60, 64, 65, 69, 70, 76, 79, 82, 83. Accommodation and food (79) stays separate from arts (76). Manufacturing stays whole (12).
 6. **Suppressed compensation.** Where a CAINC6N industry line is `(D)` (for example Mining in 2024), that industry's compensation, GOS and ratios for any window containing that year are "suppressed". Totals use CAINC6N line 1 and private totals use lines 81 + 90, so they are never blocked.
-7. **Pass-through.** It applies to all 12 MIT thresholds, scaled by the same factor. The iteration stops when the relative change in the factor falls below `sensitivity.passthrough_tol`, and it raises after `passthrough_max_iter` iterations.
+7. **Pass-through.** It is a sensitivity only; the headline is p = 0. It applies to all 12 MIT thresholds, scaled by the same factor, but the sensitivity table reports floor results, so in practice only the $20.29 floor moves. The iteration stops when the relative change in the factor falls below `sensitivity.passthrough_tol`, and it raises after `passthrough_max_iter` iterations.
 8. **Carry-over from the first plan's review** (your call, "fold into the next plan"): Task 1 does the fetch hardening; Task 2 adds the BEA API with `NoteRef` parsing; Task 4 adds `WKHP`/`WKWN` > 0 to the wage check. The like-for-like wage check (COW 7 added) is already done.
 
 ## Review Focus
