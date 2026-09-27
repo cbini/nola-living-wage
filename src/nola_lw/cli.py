@@ -16,8 +16,10 @@ def fetch(cfg, only: str | None, refresh_mit: bool) -> None:
         elif src == "bea":
             from nola_lw.fetch import bea
             print("bea:", *bea.fetch_zips(cfg))
-        else:
-            raise SystemExit(f"fetch {src}: not implemented")
+        elif src == "pums":
+            from nola_lw.fetch import pums
+            print("pums:", *pums.fetch_bulk(cfg))
+            print("pums:", pums.fetch_other_states(cfg))
 
 
 def main(argv: list[str] | None = None) -> None:
