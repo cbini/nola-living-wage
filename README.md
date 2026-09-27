@@ -4,4 +4,8 @@ How many people who work in Orleans Parish (place of work, not residence) earn b
 
 ## Reproduce
 
-_Work in progress. The pipeline will run end to end with `uv run nola-lw all`._
+```sh
+uv sync
+cp .env.example .env   # both keys optional; bulk downloads need none
+uv run nola-lw all
+```

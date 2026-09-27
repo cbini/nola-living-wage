@@ -1,0 +1,70 @@
+# All constants for the pipeline (SPEC §9: no numbers in code).
+years:
+  pool: [2020, 2024]     # headline, published 5-year pool
+  subset: [2022, 2024]   # shown alongside (SPEC §6, §12f)
+
+# Orleans codes; POWPUMA confirmed at the §11.2 checkpoint
+orleans:
+  state_fips: "22"
+  county_fips: "071"
+  powsp: "022"
+  powpuma: ["02400"]
+
+mit:
+  base_url: "https://livingwage.mit.edu"
+  county_path: "counties/22071"
+  metro_path: "metros/35380"
+  methodology_path: "pages/methodology"
+  floor_type: "a1_w1_c0"
+  hours_full_time: 2080
+
+cpi:
+  series: "CUUR0300SA0"   # CPI-U South urban, NSA
+  base_year: 2024         # ADJINC dollar year
+  target: "2025-12"       # MIT price basis (SPEC §4)
+  fetch_years: [2019, 2026]
+
+pums:
+  bulk_base: "https://www2.census.gov/programs-surveys/acs/data/pums/2024/5-Year"
+  bulk_states: ["la", "ms"]
+  # 48 states + DC, excluding LA and MS
+  other_states: [ak, al, ar, az, ca, co, ct, dc, de, fl, ga, hi, ia, id, il, in, ks, ky,
+                 ma, md, me, mi, mn, mo, mt, nc, nd, ne, nh, nj, nm, nv, ny, oh, ok, or,
+                 pa, ri, sc, sd, tn, tx, ut, va, vt, wa, wi, wv, wy]
+  dictionary_url: "https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2020-2024.csv"
+  min_free_disk_gb: 5
+
+bea:
+  county_geo: "22071"
+  state_geo: "22000"
+  county_tables: [CAGDP2, CAINC5N, CAINC6N, CAINC1]
+  state_tables: [SAGDP2, SAGDP3, SAGDP4, SAGDP7, SAINC1, SAPCE1]
+  zip_base: "https://apps.bea.gov/regional/zip"
+  zips: [CAGDP2, CAINC5N, CAINC6N, CAINC1, SAGDP, SAINC, SAPCE]
+  wages_line: {table: CAINC5N, line: "50"}
+  wages_crosscheck: {table: CAINC6N, line: "5"}
+  suppression_flags: ["(D)", "(NA)", "(NM)", "(L)"]
+
+universe:
+  cow_wage: ["1", "2", "3", "4", "5"]
+  cow_public: ["3", "4", "5"]
+  cow_self: ["6", "7"]
+  cow_unpaid: ["8"]
+  wage_min: 2
+  wage_max: 500
+
+# SPEC §12 decisions a–f
+decisions:
+  household_unit: family_with_subfamilies        # a
+  thresholds: orleans                            # b
+  sensitivity_thresholds: metro                  # b
+  gos_test: both                                 # c
+  out_of_state: all_state_bulk                   # d
+  passthrough_bases: [resident_pce, gdp]         # e
+  passthrough_p: [0, 0.5, 1]                     # §7.1
+  headline_years: pool                           # f
+  alongside_years: subset                        # f
+
+checkpoint:
+  wage_tolerance: 0.15
+moe_z: 1.645
