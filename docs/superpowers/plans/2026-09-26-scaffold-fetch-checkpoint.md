@@ -18,13 +18,13 @@
 - `data/raw/` and `data/out/` are gitignored, except `results.md`, `qa.md`, `*.csv` and `*.png`. `data/snapshots/` and `crosswalks/` are committed.
 - MIT thresholds are scraped, never hardcoded. The committed dated snapshot is reused unless `--refresh-mit` is passed (§9).
 - PUMS codes (`POWSP`, `POWPUMA`, `PUMA`, `NAICSP`, `COW`, `SERIALNO`) are read as strings. Leading zeros matter (for example `POWSP` = `022`).
-- **Keys.** No Census key is used, since all PUMS data comes from the bulk files. BLS works keyless, with `BLS_API_KEY` optional. BEA's key is held by the agent proxy as a Body-parameter API credential and is injected into the **POST body** for `apps.bea.gov`. So BEA requests are `POST`s with form-encoded parameters. When `BEA_API_KEY` is set (local runs), `UserID` is added to the body; otherwise it is left out and the proxy supplies it. BEA echoes `USERID` in every response, so remove it before saving. These keys are usage identifiers, not secrets, but they stay out of files anyway.
+- **Keys.** No Census key is used, since all PUMS data comes from the bulk files. BLS works keyless, with `BLS_API_KEY` optional. **BEA data comes from BEA's bulk regional ZIPs** (plain GET, no key and no rate limit). `BEA_API_KEY` is read from an environment variable and is needed only for later API calls, such as the NIPA fixed-asset tables in §11.6. The environment must list `apps.bea.gov` under allowed domains. These keys are usage identifiers, not secrets, but they are still kept out of files.
 - Commit after each task and push after each completed SPEC §11 step.
 
 ## Review Focus
 
-1. **BEA suppression flags.** The API returns suppressed cells as `DataValue` "0" plus `NoteRef` "(D)"; `(NA)`/`(NM)` may also appear. Any cell with a flag in `NoteRef` must parse as null with the flag kept, never as 0. Covered by a test in Task 5.
-2. **API keys written to disk.** URL keys are removed in the manifest, and BEA's echoed `USERID` is removed from saved responses. Covered by tests in Tasks 2 and 5.
+1. **BEA suppression flags.** `(D)`, `(NA)`, `(NM)` and `(L)` must parse as null with the flag kept, never as 0. In the API (the fallback path), a suppressed cell arrives as `DataValue` "0" plus `NoteRef` "(D)". Covered by a test in Task 5.
+2. **API keys written to disk.** URL keys (`key`, `UserID`, `registrationkey`) are removed in the manifest. Covered by a test in Task 2.
 3. **MIT page layout changes.** The scraper must fail loudly if it doesn't find exactly 12 "Living Wage" values under the expected household headers, rather than assigning columns silently. Covered by a test in Task 3.
 4. **Missing CPI target month.** If December 2025 isn't in the BLS series, raise an error; never fall back silently to another month. Covered by a test in Task 4.
 5. **Leading-zero codes.** `POWSP` and `POWPUMA` read as integers would drop leading zeros and match nothing. Covered by a test in Task 6.
@@ -39,7 +39,7 @@
 - Survey-year record counts in the LA person file: 2020: 31,513; 2021: 43,663; 2022–24: about 45k each.
 - **BEA, checked live on 2026-09-27:** the table names above exist. CAINC5N line 50 and CAINC6N line 5 are identical (2020: 11,644,740; 2024: 14,206,017, in thousands). Orleans CAGDP2 has no zero or suppressed cells for 2019–2024. CAINC6N has 133 zero cells for 2020–24, mostly at the subsector level. Data were last updated 2026-02-05.
 - The BLS v1 API works without a key: `CUUR0300SA0` returns monthly data through 2026-08.
-- **Proxy credentials (tested 2026-09-27).** A BEA `POST` with no `UserID` succeeds, because the proxy injects it into the body. A `GET` returns `injection failed`. The Census API rejects `POST` with a 405, so it can't use a proxy credential. Hence all PUMS data comes from the bulk files.
+- **BEA access (2026-09-27).** A proxy-held API credential only works with POST, and it breaks every GET to `apps.bea.gov`, including the bulk ZIPs. For the implementation session, the credential is replaced by a `BEA_API_KEY` environment variable, and `apps.bea.gov` is added to allowed domains. The ZIP layout wasn't observable from this session, so **Task 5, Step 0 verifies it first.** The Census API is GET-only, hence the PUMS bulk files.
 
 ## File Structure
 
@@ -78,7 +78,7 @@ tests/test_*.py
   - `mit: {county_path: "counties/22071", metro_path: "metros/35380", methodology_path: "pages/methodology", base_url: "https://livingwage.mit.edu", floor_type: "a1_w1_c0", hours_full_time: 2080}`
   - `cpi: {series: "CUUR0300SA0", base_year: 2024, target: "2025-12"}`
   - `pums: {bulk_base: "https://www2.census.gov/programs-surveys/acs/data/pums/2024/5-Year", bulk_states: ["la", "ms"], other_states: [the 49 other postal codes (48 states + DC), lower-case], dictionary_url: ".../PUMS_Data_Dictionary_2020-2024.csv"}`
-  - `bea: {county_geo: "22071", state_geo: "22000", county_tables: [CAGDP2, CAINC5N, CAINC6N, CAINC1], state_tables: [SAGDP2, SAGDP3, SAGDP4, SAGDP7, SAINC1, SAPCE1], max_per_minute: 60, wages_line: {table: CAINC5N, line: "50"}, wages_crosscheck: {table: CAINC6N, line: "5"}}`. Table names were confirmed live on 2026-09-27. SAGDP3 is taxes less subsidies, SAGDP7 is GOS (used for validation).
+  - `bea: {county_geo: "22071", state_geo: "22000", county_tables: [CAGDP2, CAINC5N, CAINC6N, CAINC1], state_tables: [SAGDP2, SAGDP3, SAGDP4, SAGDP7, SAINC1, SAPCE1], zip_base: "https://apps.bea.gov/regional/zip", zips: [CAGDP2, CAINC5N, CAINC6N, CAINC1, SAGDP, SAINC, SAPCE], wages_line: {table: CAINC5N, line: "50"}, wages_crosscheck: {table: CAINC6N, line: "5"}}`. Table names were confirmed live on 2026-09-27. SAGDP3 is taxes less subsidies, SAGDP7 is GOS (used for validation).
   - `universe: {cow_wage: ["1", "2", "3", "4", "5"], cow_public: ["3", "4", "5"], cow_self: ["6", "7"], cow_unpaid: ["8"], wage_min: 2, wage_max: 500}`
   - `decisions:` one key for each item in SPEC §12 a–f, with a string value (for example `household_unit: family_with_subfamilies`, `thresholds: orleans`, `sensitivity_thresholds: metro`, `gos_test: both`, `out_of_state: all_state_api`, `passthrough_bases: [resident_pce, gdp]`, `passthrough_p: [0, 0.5, 1]`, `headline_years: pool`, `alongside_years: subset`)
   - `checkpoint: {wage_tolerance: 0.15}`, `moe_z: 1.645`
@@ -93,13 +93,11 @@ tests/test_*.py
 
 **Interfaces:**
 - Produces: `download(url: str, dest: Path, *, params: dict | None = None, client: httpx.Client | None = None, force: bool = False) -> Path`. It appends one row to `data/raw/manifest.csv` with the columns `url, fetched_at_utc, sha256, bytes, path`. `redact(url: str) -> str` replaces the values of `key`, `UserID` and `registrationkey` with `REDACTED`. It skips a download when `dest` exists, `force` is false and its sha256 matches the manifest.
-- Also produces `download_post(url: str, dest: Path, *, data: dict, scrub: Callable[[bytes], bytes] | None = None, ...) -> Path`, which POSTs form-encoded data, applies `scrub` to the body before hashing and writing, and records the manifest the same way.
 
 - [ ] **Step 1: Write the failing tests** using `httpx.MockTransport`:
   - `test_download_writes_manifest_row`: the sha256 in the manifest equals `hashlib.sha256(body).hexdigest()`, and `bytes` equals `len(body)`.
   - `test_manifest_redacts_keys`: `params={"key": "SECRET", "UserID": "SECRET2"}` puts no `SECRET` substring anywhere in the manifest file.
   - `test_skip_when_unchanged`: a second call with the same dest makes zero requests (the transport counts calls).
-  - `test_download_post_scrubs`: a scrub function that removes `SECRET` means the file on disk and the manifest hash both reflect the scrubbed body.
 - [ ] **Step 2:** Run them; they fail on import.
 - [ ] **Step 3:** Implement with `httpx.Client(timeout=300, follow_redirects=True)`, and write through a temporary file then rename.
 - [ ] **Step 4:** Run the tests; they pass.
@@ -141,28 +139,25 @@ tests/test_*.py
 - [ ] **Step 4:** Run the tests; they pass. Run `uv run nola-lw fetch --only bls`; a manifest row appears.
 - [ ] **Step 5:** Commit: `fetch: BLS CPI-U South and Dec-2025/2024 factor`.
 
-### Task 5: BEA Regional tables
+### Task 5: BEA regional tables (bulk ZIPs)
 
-**Files:** Create `src/nola_lw/fetch/bea.py` and `tests/test_bea.py`, with the fixture `tests/fixtures/bea_sample.json`, hand-made in BEA's response shape.
+**Files:** Create `src/nola_lw/fetch/bea.py` and `tests/test_bea.py`, with the fixture `tests/fixtures/bea_sample.csv`, a trimmed copy of a real file from Step 0.
 
 **Interfaces:**
-- Produces: `fetch_line_codes(table: str) -> list[str]`, which calls `GetParameterValuesFiltered` with `TargetParameter=LineCode`.
-- `fetch_table(table: str, geo: str, years: list[int]) -> Path`, one `GetData` **POST** per line code (`datasetname=Regional`, `ResultFormat=json`; `UserID` only if `BEA_API_KEY` is set), saved to `data/raw/bea/{table}_{geo}_{line}.json` after `scrub_userid`. `scrub_userid(body: bytes) -> bytes` removes the `USERID` entry from `BEAAPI.Request.RequestParam`. An `Error` object in the response raises `RuntimeError` with BEA's message.
-- `parse_bea(paths: list[Path]) -> pl.DataFrame`, with the columns `table, line_code, line_desc, geo, year:int, value:float|null, flag:str|null`. It removes thousands separators and multiplies by `UNIT_MULT` when present.
-- `fetch_all(cfg)` covers the county and state tables from config for the years in `years.pool`, throttled to `bea.max_per_minute` (config: 60; the BEA limit is 100 per minute, and exceeding it means a 1-hour lockout). Already-fetched files are skipped, so a rerun after an interruption resumes.
+- Produces: `fetch_zips(cfg) -> list[Path]` downloads `{zip_base}/{name}.zip` for each name in `bea.zips` through `download()` (manifest row, sha256), then extracts to `data/raw/bea/{name}/`.
+- `parse_bea_csv(path: Path, geo: str) -> pl.DataFrame`, with the columns `table, line_code, line_desc, geo, year:int, value:float|null, flag:str|null`. It keeps only rows for `geo` and reshapes the year columns from wide to long. `(D)`, `(NA)`, `(NM)` and `(L)` become a null value with the flag kept. The footnote and source lines at the end of the file are dropped. Units are read from the file's unit column and scaled to dollars.
+- `load_bea(cfg) -> pl.DataFrame` gives the tables in `bea.county_tables` for `county_geo` and `bea.state_tables` for `state_geo`, over `years.pool`.
 
-- [ ] **Step 1: Write the failing tests:**
-  - `test_parse_suppressed`: `{"DataValue": "0", "NoteRef": "(D)"}` gives `value is None` and `flag == "(D)"`. This is the real API shape, checked 2026-09-27. A `DataValue "(D)"` string gives the same result.
-  - `test_parse_numbers`: `"1,234,567"` gives 1234567.0.
-  - `test_parse_na`: `"(NA)"` gives null with the flag kept.
-  - `test_scrub_userid`: a response whose RequestParam includes `USERID` comes back without it, and the other params are kept.
-  - `test_fetch_uses_post_without_key`: with `BEA_API_KEY` unset, the MockTransport sees `POST` and no `UserID` in the body.
-  - `test_bea_error_raises`: an `Error` object, either at `BEAAPI.Error` or at `BEAAPI.Results.Error` (the rate-limit error arrives as `APIErrorCode` "7"), raises `RuntimeError` with its message and is never recorded as data.
-  - `test_throttle`: with a fake clock, 150 calls never exceed `bea.max_per_minute` (config, 60) within any 60-second window.
+- [ ] **Step 0: Verify the ZIP layout live, before writing the tests.** Download `CAINC6N.zip` and `SAGDP.zip`. Record their file names, the header row, how "(D)" appears, the footer lines, and the unit column in the plan's findings section. Then check that Orleans CAINC5N line 50 in the file equals the API figures recorded in the findings (2020: 11,644,740; 2024: 14,206,017, in thousands), and that CAINC5N line 200 for 2024 is "(D)". **If a ZIP is missing or its layout differs from what's assumed here, stop and tell the user.** The fallback is the API with `BEA_API_KEY` from the environment, following the findings above: throttle to 60 per minute, read `NoteRef`, and treat errors as fatal.
+- [ ] **Step 1: Write the failing tests** against the Step 0 fixture:
+  - `test_parse_suppressed`: a `(D)` cell gives `value is None` and `flag == "(D)"`, never 0.
+  - `test_parse_numbers_and_units`: a known Orleans value parses to the expected dollars, using the unit column.
+  - `test_footer_dropped`: no rows from the footnote lines.
+  - `test_geo_filter`: only rows with `geo == "22071"` remain.
 - [ ] **Step 2:** Run them; they fail.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run the tests; they pass. Run `uv run nola-lw fetch --only bea` live through the proxy; the files appear, with no `USERID` in any file (`grep -ri userid data/raw/bea` is empty).
-- [ ] **Step 5:** Commit: `fetch: BEA Regional tables with suppression flags`.
+- [ ] **Step 3:** Implement. Read the CSVs with `pl.read_csv(..., infer_schema_length=0)` so every column comes in as text, then cast. The files are latin-1 encoded if Step 0 shows that.
+- [ ] **Step 4:** Run the tests; they pass. Run `uv run nola-lw fetch --only bea` live; the manifest has one row per ZIP.
+- [ ] **Step 5:** Commit: `fetch: BEA regional bulk ZIPs with suppression flags`.
 
 ### Task 6: PUMS fetchers (bulk files, all states)
 
