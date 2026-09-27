@@ -105,6 +105,10 @@ decisions:
   headline_years: pool                           # f
   alongside_years: subset                        # f
 
+sensitivity:
+  passthrough_tol: 1.0e-6
+  passthrough_max_iter: 100
+
 checkpoint:
   wage_tolerance: 0.15
   # BEA counts salaries owners of incorporated businesses pay themselves (COW 7) as wages;

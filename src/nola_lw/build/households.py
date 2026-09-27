@@ -63,11 +63,13 @@ def family_units(persons: pl.DataFrame, cfg) -> pl.DataFrame:
     )
 
 
-def load_thresholds(cfg, snapshot_dir: Path = Path("data/snapshots")) -> dict[str, float]:
-    """Living-wage hourly thresholds by household key, from the latest committed county snapshot."""
-    area = cfg["mit"]["county_path"].replace("/", "_")
-    snaps = sorted(snapshot_dir.glob(f"mit_{area}_*.csv"))
+def load_thresholds(cfg, snapshot_dir: Path = Path("data/snapshots"), area: str = "county") -> dict[str, float]:
+    """Living-wage hourly thresholds by household key, from the latest committed snapshot for
+    `area` ("county" = Orleans headline thresholds, "metro" = CBSA 35380, SPEC §7.6)."""
+    path_key = {"county": "county_path", "metro": "metro_path"}[area]
+    area_name = cfg["mit"][path_key].replace("/", "_")
+    snaps = sorted(snapshot_dir.glob(f"mit_{area_name}_*.csv"))
     if not snaps:
-        raise FileNotFoundError(f"no MIT snapshot data/snapshots/mit_{area}_*.csv")
+        raise FileNotFoundError(f"no MIT snapshot data/snapshots/mit_{area_name}_*.csv")
     rows = list(csv.DictReader(snaps[-1].open()))
     return {r["household"]: float(r["hourly"]) for r in rows}
