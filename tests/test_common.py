@@ -64,3 +64,12 @@ def test_error_message_redacts_key(tmp_path):
         download("https://example.test/api", tmp_path / "a.json", params={"UserID": "SECRET"},
                   client=_failing_client(), manifest=manifest)
     assert "SECRET" not in str(excinfo.value)
+
+
+def test_error_message_includes_redacted_key(tmp_path):
+    """The failed-request query string (params=) must still show up in the error, key redacted."""
+    manifest = tmp_path / "manifest.csv"
+    with pytest.raises(RuntimeError) as excinfo:
+        download("https://example.test/api", tmp_path / "a.json", params={"UserID": "SECRET"},
+                  client=_failing_client(), manifest=manifest)
+    assert "UserID=REDACTED" in str(excinfo.value)

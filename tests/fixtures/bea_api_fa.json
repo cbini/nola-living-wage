@@ -1,0 +1,230 @@
+{
+  "BEAAPI": {
+    "Results": {
+      "Statistic": "NIPA Table",
+      "Data": [
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "1",
+          "LineDescription": "Private fixed assets",
+          "TimePeriod": "2020",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "3,005,721",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "1",
+          "LineDescription": "Private fixed assets",
+          "TimePeriod": "2021",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "3,211,856",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "1",
+          "LineDescription": "Private fixed assets",
+          "TimePeriod": "2022",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "3,578,376",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "1",
+          "LineDescription": "Private fixed assets",
+          "TimePeriod": "2023",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "3,800,377",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "1",
+          "LineDescription": "Private fixed assets",
+          "TimePeriod": "2024",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "3,992,907",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "2",
+          "LineDescription": "Agriculture, forestry, fishing, and hunting",
+          "TimePeriod": "2020",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "55,431",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "2",
+          "LineDescription": "Agriculture, forestry, fishing, and hunting",
+          "TimePeriod": "2021",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "58,154",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "2",
+          "LineDescription": "Agriculture, forestry, fishing, and hunting",
+          "TimePeriod": "2022",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "65,292",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "2",
+          "LineDescription": "Agriculture, forestry, fishing, and hunting",
+          "TimePeriod": "2023",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "68,555",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "2",
+          "LineDescription": "Agriculture, forestry, fishing, and hunting",
+          "TimePeriod": "2024",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "69,741",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "5",
+          "LineDescription": "Mining",
+          "TimePeriod": "2020",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "145,545",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "5",
+          "LineDescription": "Mining",
+          "TimePeriod": "2021",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "129,241",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "5",
+          "LineDescription": "Mining",
+          "TimePeriod": "2022",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "140,426",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "5",
+          "LineDescription": "Mining",
+          "TimePeriod": "2023",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "146,241",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "5",
+          "LineDescription": "Mining",
+          "TimePeriod": "2024",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "0",
+          "NoteRef": "(D)"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "93",
+          "LineDescription": "Accommodation and food services",
+          "TimePeriod": "2020",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "44,155",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "93",
+          "LineDescription": "Accommodation and food services",
+          "TimePeriod": "2021",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "46,323",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "93",
+          "LineDescription": "Accommodation and food services",
+          "TimePeriod": "2022",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "52,363",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "93",
+          "LineDescription": "Accommodation and food services",
+          "TimePeriod": "2023",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "54,873",
+          "NoteRef": "FAAt304ESI"
+        },
+        {
+          "TableName": "FAAt304ESI",
+          "LineNumber": "93",
+          "LineDescription": "Accommodation and food services",
+          "TimePeriod": "2024",
+          "METRIC_NAME": "Current Dollars",
+          "CL_UNIT": "Level",
+          "UNIT_MULT": "6",
+          "DataValue": "56,281",
+          "NoteRef": "FAAt304ESI"
+        }
+      ]
+    }
+  },
+  "_fixture_note": "Trimmed real BEA FixedAssets FAAt304ESI response (lines 1,2,5,93; 2020-2024). The LineNumber=5, TimePeriod=2024 cell was hand-fabricated to (DataValue=0, NoteRef=(D)) to exercise the suppression path; real BEA data has no suppressed cells in this table today. See tests/test_bea_api.py::test_fixture_has_fabricated_suppressed_cell."
+}

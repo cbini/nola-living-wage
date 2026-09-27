@@ -49,7 +49,14 @@ bea:
   # CAGDP2 top-level sectors (these sum to line 1 when nothing is suppressed)
   gdp_sector_lines: ["3", "6", "10", "11", "12", "34", "35", "36", "45", "50", "59", "68", "75", "82", "83"]
   state_abbr: "LA"          # per-state CSV inside each ZIP carries the county and state rows
+  national_geo: "00000"
+  national_abbr: "US"
   suppression_flags: ["(D)", "(NA)", "(NM)", "(L)"]
+  api_base: "https://apps.bea.gov/api/data"
+  api_min_interval_s: 1
+  fixed_assets:
+    dataset: FixedAssets
+    table: FAAt304ESI
   unit_scale:               # file Unit column -> multiplier to dollars (or 1 for non-dollar units)
     "Thousands of dollars": 1000
     "Millions of current dollars": 1000000

@@ -75,4 +75,5 @@ def load_bea(cfg, raw: Path = RAW) -> pl.DataFrame:
     y0, y1 = cfg["years"]["pool"]
     frames = [parse_bea_csv(_table_file(raw, t, b["state_abbr"]), b["county_geo"], b) for t in b["county_tables"]]
     frames += [parse_bea_csv(_table_file(raw, t, b["state_abbr"]), b["state_geo"], b) for t in b["state_tables"]]
+    frames.append(parse_bea_csv(_table_file(raw, "SAGDP2", b["national_abbr"]), b["national_geo"], b))
     return pl.concat(frames).filter(pl.col("year").is_between(y0, y1))

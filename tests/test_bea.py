@@ -13,11 +13,12 @@ def _parse(path=FIX, geo="22071"):
     return parse_bea_csv(path, geo, CFG["bea"])
 
 
-def test_parse_suppressed():
+@pytest.mark.parametrize("line_code,flag", [("200", "(D)"), ("201", "(NA)"), ("202", "(NM)"), ("203", "(L)")])
+def test_parse_suppressed(line_code, flag):
     df = _parse()
-    r = df.filter((df["line_code"] == "200") & (df["year"] == 2024)).row(0, named=True)
+    r = df.filter((df["line_code"] == line_code) & (df["year"] == 2024)).row(0, named=True)
     assert r["value"] is None
-    assert r["flag"] == "(D)"
+    assert r["flag"] == flag
 
 
 def test_parse_numbers_and_units():
@@ -30,7 +31,7 @@ def test_parse_numbers_and_units():
 
 def test_footer_dropped():
     df = _parse()
-    assert set(df["line_code"]) == {"10", "50", "200"}
+    assert set(df["line_code"]) == {"10", "50", "200", "201", "202", "203"}
     assert df["geo"].null_count() == 0
 
 
@@ -71,3 +72,30 @@ def test_malformed_row_for_geo_raises(tmp_path):
                  '"U.S. Bureau of Economic Analysis"\n')
     with pytest.raises(ValueError, match="malformed"):
         _parse(p)
+
+
+def _minimal_table(raw: Path, folder: str, table: str, abbr: str, geo: str | None = None) -> None:
+    y0, y1 = CFG["years"]["pool"]
+    years = ",".join(str(y) for y in range(y0, y1 + 1))
+    header = f'GeoFIPS,GeoName,Region,TableName,LineCode,IndustryClassification,Description,Unit,{years}\n'
+    body = ""
+    if geo:
+        vals = ",".join("1" for _ in range(y0, y1 + 1))
+        body = f' "{geo}","x",5,{table},1,"...","All industry total","Millions of current dollars",{vals}\n'
+    d = raw / folder
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{table}_{abbr}_2000_2025.csv").write_text(header + body)
+
+
+def test_load_bea_includes_national_sagdp2(tmp_path):
+    from nola_lw.fetch.bea import load_bea
+    b = CFG["bea"]
+    for t in b["county_tables"]:
+        _minimal_table(tmp_path, t, t, b["state_abbr"], geo=b["county_geo"])
+    for t in b["state_tables"]:
+        _minimal_table(tmp_path, t, t, b["state_abbr"], geo=b["state_geo"])
+    _minimal_table(tmp_path, "SAGDP2", "SAGDP2", b["national_abbr"], geo=b["national_geo"])
+    df = load_bea(CFG, tmp_path)
+    nat = df.filter((df["table"] == "SAGDP2") & (df["geo"] == b["national_geo"]))
+    assert nat.height > 0
+    assert set(nat["value"]) == {1_000_000.0}

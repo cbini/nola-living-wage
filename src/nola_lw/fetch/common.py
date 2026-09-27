@@ -47,14 +47,14 @@ def download(url: str, dest: Path, *, params: dict | None = None, client: httpx.
     try:
         try:
             with client.stream("GET", url, params=params) as r:
-                r.raise_for_status()
                 full_url = str(r.request.url)
+                r.raise_for_status()
                 with tmp.open("wb") as f:
                     for chunk in r.iter_bytes():
                         f.write(chunk)
             ok = True
         except httpx.HTTPStatusError as e:
-            raise RuntimeError(f"GET {redact(url)} -> {e.response.status_code}") from None
+            raise RuntimeError(f"GET {redact(full_url)} -> {e.response.status_code}") from None
     finally:
         if own:
             client.close()
