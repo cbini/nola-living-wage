@@ -66,6 +66,34 @@ def test_error_message_redacts_key(tmp_path):
     assert "SECRET" not in str(excinfo.value)
 
 
+def test_transform_applied_before_manifest_hash(tmp_path):
+    """transform runs on the fetched bytes before the file is written, so the manifest's
+    sha256 (and the file on disk) reflect the transformed content, never the raw response."""
+    dest = tmp_path / "x.json"
+    manifest = tmp_path / "manifest.csv"
+    download("https://example.test/x.json", dest, client=_client([]), manifest=manifest,
+              transform=lambda b: b.upper())
+    assert dest.read_bytes() == BODY.upper()
+    rows = list(csv.DictReader(manifest.open()))
+    assert rows[0]["sha256"] == hashlib.sha256(BODY.upper()).hexdigest()
+
+
+def test_transform_raising_leaves_no_file_or_manifest_row(tmp_path):
+    """A validating transform (e.g. reject a broken 200 body) must stop the file from being
+    durably cached and stop a manifest row from being written for it."""
+    dest = tmp_path / "x.json"
+    manifest = tmp_path / "manifest.csv"
+
+    def reject(_b):
+        raise RuntimeError("bad body")
+
+    with pytest.raises(RuntimeError, match="bad body"):
+        download("https://example.test/x.json", dest, client=_client([]), manifest=manifest, transform=reject)
+    assert not dest.exists()
+    assert not dest.with_name(dest.name + ".part").exists()
+    assert not manifest.exists()
+
+
 def test_error_message_includes_redacted_key(tmp_path):
     """The failed-request query string (params=) must still show up in the error, key redacted."""
     manifest = tmp_path / "manifest.csv"

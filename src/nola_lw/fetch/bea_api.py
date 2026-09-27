@@ -7,10 +7,9 @@ from pathlib import Path
 
 import polars as pl
 
-from nola_lw.fetch.common import download
+from nola_lw.fetch.common import MANIFEST, SECRET_PARAMS, download
 
 RAW = Path("data/raw/bea/api")
-SUPPRESSION_FLAGS = ["(D)", "(NA)", "(NM)", "(L)"]  # mirrors config bea.suppression_flags
 
 _last_call = 0.0
 
@@ -35,11 +34,23 @@ def check_for_error(obj) -> None:
             check_for_error(v)
 
 
-def parse_api(data: list[dict], unit_mult_key: str = "UNIT_MULT") -> pl.DataFrame:
+def _validate_and_scrub(content: bytes) -> bytes:
+    """download() transform: runs before anything is written to disk or hashed into the
+    manifest. Rejects an API-level Error (so a broken 200 is never durably cached), and
+    scrubs the key BEA echoes back under BEAAPI.Request.RequestParam."""
+    obj = json.loads(content)
+    check_for_error(obj)
+    for p in obj.get("BEAAPI", {}).get("Request", {}).get("RequestParam", []):
+        if p.get("ParameterName", "").lower() in SECRET_PARAMS:
+            p["ParameterValue"] = "REDACTED"
+    return json.dumps(obj).encode()
+
+
+def parse_api(data: list[dict], flags: list[str], unit_mult_key: str = "UNIT_MULT") -> pl.DataFrame:
     out = []
     for rec in data:
         note = rec.get("NoteRef") or ""
-        flag = next((f for f in SUPPRESSION_FLAGS if f in note), None)
+        flag = next((f for f in flags if f in note), None)
         if flag:
             value = None
         else:
@@ -51,7 +62,7 @@ def parse_api(data: list[dict], unit_mult_key: str = "UNIT_MULT") -> pl.DataFram
     return pl.DataFrame(out, schema=schema)
 
 
-def fetch_fixed_assets(cfg, raw: Path = RAW) -> Path:
+def fetch_fixed_assets(cfg, raw: Path = RAW, client=None, manifest: Path = MANIFEST) -> Path:
     b = cfg["bea"]
     y0, y1 = cfg["years"]["pool"]
     years = ",".join(str(y) for y in range(y0, y1 + 1))
@@ -60,13 +71,12 @@ def fetch_fixed_assets(cfg, raw: Path = RAW) -> Path:
               "TableName": fa["table"], "Year": years, "ResultFormat": "JSON"}
     dest = raw / f"{fa['table']}.json"
     _throttle(b["api_min_interval_s"])
-    dest = download(b["api_base"], dest, params=params)
-    check_for_error(json.loads(dest.read_text()))
-    return dest
+    return download(b["api_base"], dest, params=params, client=client, manifest=manifest,
+                     transform=_validate_and_scrub)
 
 
 def load_fixed_assets(cfg, raw: Path = RAW) -> pl.DataFrame:
     fa = cfg["bea"]["fixed_assets"]
     dest = raw / f"{fa['table']}.json"
     data = json.loads(dest.read_text())["BEAAPI"]["Results"]["Data"]
-    return parse_api(data)
+    return parse_api(data, cfg["bea"]["suppression_flags"])

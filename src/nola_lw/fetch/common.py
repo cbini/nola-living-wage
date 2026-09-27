@@ -2,6 +2,7 @@
 import csv
 import hashlib
 import os
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -35,7 +36,8 @@ def _last_hash(manifest: Path, dest: Path) -> str | None:
 
 
 def download(url: str, dest: Path, *, params: dict | None = None, client: httpx.Client | None = None,
-             force: bool = False, manifest: Path = MANIFEST) -> Path:
+             force: bool = False, manifest: Path = MANIFEST,
+             transform: Callable[[bytes], bytes] | None = None) -> Path:
     dest = Path(dest)
     if not force and dest.exists() and _last_hash(manifest, dest) == sha256(dest):
         return dest
@@ -49,9 +51,12 @@ def download(url: str, dest: Path, *, params: dict | None = None, client: httpx.
             with client.stream("GET", url, params=params) as r:
                 full_url = str(r.request.url)
                 r.raise_for_status()
-                with tmp.open("wb") as f:
-                    for chunk in r.iter_bytes():
-                        f.write(chunk)
+                if transform is None:
+                    with tmp.open("wb") as f:
+                        for chunk in r.iter_bytes():
+                            f.write(chunk)
+                else:
+                    tmp.write_bytes(transform(r.read()))
             ok = True
         except httpx.HTTPStatusError as e:
             raise RuntimeError(f"GET {redact(full_url)} -> {e.response.status_code}") from None
