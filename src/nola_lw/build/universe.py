@@ -27,13 +27,19 @@ def load_persons(cfg, raw: Path = Path("data/raw")) -> pl.DataFrame:
     return pl.concat(frames).collect()
 
 
-def build_universe(persons: pl.DataFrame, cpi_json: dict, cfg) -> pl.DataFrame:
-    """One row per wage/salary worker at Orleans place of work, with hourly wage in MIT's price basis."""
+def build_universe(persons: pl.DataFrame, cpi_json: dict, cfg, include_self_employed: bool = False) -> pl.DataFrame:
+    """One row per wage/salary worker at Orleans place of work, with hourly wage in MIT's price basis.
+
+    `include_self_employed` (a sensitivity only) adds `universe.cow_self` workers and pays everyone
+    wages plus self-employment income (`SEMP`); a net loss or zero income drops the person."""
     o, u, c = cfg["orleans"], cfg["universe"], cfg["cpi"]
     factor = cpi_factor(cpi_json, c["base_year"], c["target"])
+    cow, pay = u["cow_wage"], pl.col("WAGP")
+    if include_self_employed:
+        cow, pay = cow + u["cow_self"], pay + pl.col("SEMP").fill_null(0)
     df = persons.filter(
         (pl.col("POWSP") == o["powsp"]) & pl.col("POWPUMA").is_in(o["powpuma"])
-        & pl.col("COW").is_in(u["cow_wage"]) & (pl.col("WAGP") > 0) & (pl.col("WKHP") > 0) & (pl.col("WKWN") > 0)
+        & pl.col("COW").is_in(cow) & (pay > 0) & (pl.col("WKHP") > 0) & (pl.col("WKWN") > 0)
     )
     df = df.with_columns(
         year=pl.col("SERIALNO").str.slice(0, 4),
@@ -45,7 +51,7 @@ def build_universe(persons: pl.DataFrame, cpi_json: dict, cfg) -> pl.DataFrame:
                   .otherwise(pl.lit("out_of_state")),
     )
     df = df.with_columns(
-        earnings=pl.col("WAGP") * pl.col("ADJINC") / 1e6 * factor,
+        earnings=pay * pl.col("ADJINC") / 1e6 * factor,
         hours=pl.col("WKHP") * pl.col("WKWN"),
     )
     df = df.with_columns(wage_hr=pl.col("earnings") / pl.col("hours"))

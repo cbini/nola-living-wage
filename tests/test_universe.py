@@ -42,6 +42,22 @@ def test_universe_filters(monkeypatch):
     assert out.height == 1
 
 
+def test_self_employed_included(monkeypatch):
+    """Sensitivity universe: self-employed (COW 6-7) join, paid on wages plus self-employment income."""
+    monkeypatch.setattr(u, "cpi_factor", lambda *a, **k: 1.0)
+    df = pl.concat([
+        _persons(SEMP=0),
+        _persons(COW="6", WAGP=0, SEMP=20_800),
+        _persons(COW="7", WAGP=10_000, SEMP=10_400),
+        _persons(COW="6", WAGP=0, SEMP=-5_000),
+        _persons(COW="8", WAGP=0, SEMP=0),
+    ])
+    assert u.build_universe(df, {}, CFG).height == 1
+    out = u.build_universe(df, {}, CFG, include_self_employed=True).sort("COW")
+    assert out["COW"].to_list() == ["1", "6", "7"]
+    assert out["earnings"].to_list() == pytest.approx([41_600 * 1.05, 20_800 * 1.05, 20_400 * 1.05])
+
+
 def test_wage_hr(monkeypatch):
     monkeypatch.setattr(u, "cpi_factor", lambda *a, **k: 1.0278)
     out = u.build_universe(_persons(), {}, CFG)

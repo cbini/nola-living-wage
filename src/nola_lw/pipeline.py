@@ -61,7 +61,8 @@ def run(cfg, raw: Path = Path("data/raw"), out: Path = Path("data/out")) -> Path
     panel = cap.to_target_dollars(cap.bea_panel(bea, fa, industries, cfg), cpi_json, cfg)
 
     windows = {name: _window(u, panel, thresholds, cfg["years"][name], cfg) for name in ("pool", "subset")}
-    sens = run_sensitivities(u_all, {"bea": bea, "cpi_json": cpi_json}, cfg)
+    sens = run_sensitivities(u_all, {"bea": bea, "cpi_json": cpi_json}, cfg,
+                            u_self=build_universe(persons, cpi_json, cfg, include_self_employed=True))
     pool = cfg["years"]["pool"]
     window_diff = window_difference(add_floor_gap(year_subset(u, pool, pool), floor), cfg["years"]["subset"], pool,
                                     cfg["moe_z"])

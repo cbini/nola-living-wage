@@ -157,6 +157,7 @@ All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the chang
 | la_residents_only | la_residents_only | 1.0000 | 71,471 ± 2,930 | $934.0M ± $53.1M | no |
 | years_2022_2024 | years_2022_2024 | 1.0000 | 75,843 ± 3,792 | $962.7M ± $63.3M | yes |
 | metro_thresholds | metro_thresholds | 1.0000 | 73,357 ± 3,077 | $981.1M ± $54.9M | no |
+| self_employed_included | self_employed_included | 1.0000 | 80,756 ± 2,883 | $1,078.9M ± $55.1M | yes |
 
 ## Charts
 

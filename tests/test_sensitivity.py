@@ -77,8 +77,8 @@ def test_sensitivity_rows_complete():
         "wage_hr": [(15_000.0 + 1000 * i) / 2000.0 for i in range(n)],
     } | _weighted(n, [10.0] * n))
 
-    out = sensitivity.run_sensitivities(u, bea_ctx, CFG)
-    assert out.height == 12
+    out = sensitivity.run_sensitivities(u, bea_ctx, CFG, u_self=u)
+    assert out.height == 13
     assert set(out.columns) == {"sensitivity", "variant", "workers_below", "workers_below_se",
                                 "total_gap", "total_gap_se", "factor"}
     names = out["sensitivity"].to_list()
@@ -89,6 +89,7 @@ def test_sensitivity_rows_complete():
     assert names.count("la_residents_only") == 1
     assert names.count("years_2022_2024") == 1
     assert names.count("metro_thresholds") == 1
+    assert names.count("self_employed_included") == 1
 
     variants = set(out.filter(pl.col("sensitivity") == "passthrough")["variant"].to_list())
     assert variants == {"p=0 base=resident_pce", "p=0 base=gdp",

@@ -59,9 +59,11 @@ def _row(sensitivity: str, variant: str, summary: dict, factor: float) -> dict:
             "workers_below_se": below_se, "total_gap": gap_est, "total_gap_se": gap_se, "factor": factor}
 
 
-def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg) -> pl.DataFrame:
-    """The 12-row sensitivity table (SPEC §7): headline, 3 pass-through p × 2 spending bases,
-    outliers included, hours rule, Louisiana residents only, 2022-24 only, metro thresholds.
+def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.DataFrame | None = None) -> pl.DataFrame:
+    """The sensitivity table (SPEC §7): headline, 3 pass-through p × 2 spending bases,
+    outliers included, hours rule, Louisiana residents only, 2022-24 only, metro thresholds,
+    and, when `u_self` (the universe built with `include_self_employed=True`) is given,
+    self-employed included.
 
     `u_typed` is the built worker universe (with `outlier`, `residence`, `earnings`, `hours`,
     `wage_hr`, `year`, PWGTP*); `bea_ctx` = {"bea": <load_bea frame>, "cpi_json": <BLS CPI json>}.
@@ -101,5 +103,10 @@ def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg) -> pl.DataFrame
     metro_floor = load_thresholds(cfg, area="metro")[floor_type]
     rows.append(_row("metro_thresholds", "metro_thresholds",
                       floor_summary(add_floor_gap(headline_u, metro_floor)), 1.0))
+
+    if u_self is not None:
+        self_u = year_subset(u_self.filter(~pl.col("outlier")), pool, pool)
+        rows.append(_row("self_employed_included", "self_employed_included",
+                          floor_summary(add_floor_gap(self_u, floor)), 1.0))
 
     return pl.DataFrame(rows)
