@@ -27,17 +27,23 @@ def wsum(df: pl.DataFrame, w: str, col: str | None = None) -> float:
     return df[w].sum() if col is None else (df[col] * df[w]).sum()
 
 
+def _safe_ratio(num: float, den: float) -> float:
+    """0.0 rather than a ZeroDivisionError when a replicate's weighted denominator is 0
+    (e.g. a group with no below-floor workers)."""
+    return num / den if den else 0.0
+
+
 def floor_summary(u: pl.DataFrame) -> dict[str, tuple[float, float]]:
     below = pl.col("below")
     return {
         "workers": replicate_estimate(u, lambda d, w: wsum(d, w)),
         "below": replicate_estimate(u, lambda d, w: wsum(d.filter(below), w)),
-        "share_below": replicate_estimate(u, lambda d, w: wsum(d.filter(below), w) / wsum(d, w)),
+        "share_below": replicate_estimate(u, lambda d, w: _safe_ratio(wsum(d.filter(below), w), wsum(d, w))),
         "total_gap": replicate_estimate(u, lambda d, w: wsum(d, w, "gap_yr")),
         "mean_short_hr": replicate_estimate(
-            u, lambda d, w: wsum(d.filter(below), w, "gap_hr") / wsum(d.filter(below), w)),
+            u, lambda d, w: _safe_ratio(wsum(d.filter(below), w, "gap_hr"), wsum(d.filter(below), w))),
         "mean_short_yr": replicate_estimate(
-            u, lambda d, w: wsum(d.filter(below), w, "gap_yr") / wsum(d.filter(below), w)),
+            u, lambda d, w: _safe_ratio(wsum(d.filter(below), w, "gap_yr"), wsum(d.filter(below), w))),
     }
 
 
@@ -63,11 +69,6 @@ def leakage(u: pl.DataFrame) -> pl.DataFrame:
         rows.append({"residence": val, "share_workers": sw[0], "share_workers_se": sw[1],
                      "share_gap": sg[0], "share_gap_se": sg[1]})
     return pl.DataFrame(rows)
-
-
-def _safe_ratio(num: float, den: float) -> float:
-    """0.0 rather than a ZeroDivisionError when a replicate's weighted denominator is 0."""
-    return num / den if den else 0.0
 
 
 def _share_and_gap(g: pl.DataFrame) -> tuple[tuple[float, float], tuple[float, float]]:

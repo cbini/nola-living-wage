@@ -79,6 +79,13 @@ universe:
   wage_min: 2
   wage_max: 500
 
+capacity:
+  gos_validation_tol_usd: 500000
+  total_line: "1"
+  private_line: "2"
+  cainc6n_total: ["1"]
+  cainc6n_private: ["81", "90"]
+
 crosswalk:
   gov_line: "83"
   prefix_to_line: {"11": "3", "21": "6", "22": "10", "23": "11", "31": "12", "32": "12", "33": "12", "3M": "12",

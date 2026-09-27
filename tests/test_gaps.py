@@ -37,6 +37,15 @@ def test_floor_summary_hand_computed():
     assert s["mean_short_yr"][0] == pytest.approx(10_000.0)
 
 
+def test_floor_summary_no_one_below_floor():
+    df = pl.DataFrame({"wage_hr": [25.0, 30.0], "hours": [2000.0, 2000.0]} | _weighted(2, [3, 1]))
+    u = gaps.add_floor_gap(df, 20.0)
+    s = gaps.floor_summary(u)
+    assert s["below"][0] == pytest.approx(0.0)
+    assert s["mean_short_hr"][0] == pytest.approx(0.0)
+    assert s["mean_short_yr"][0] == pytest.approx(0.0)
+
+
 def test_household_table_has_12_rows_in_order():
     thresholds = {k: 10.0 + i for i, k in enumerate(gaps.HOUSEHOLD_KEYS)}
     u = pl.DataFrame({
