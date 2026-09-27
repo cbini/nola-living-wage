@@ -13,16 +13,16 @@ SUBFAMILY_CHILD = ["4", "5", "6"]
 
 def family_units(persons: pl.DataFrame, cfg) -> pl.DataFrame:
     """One row per person: `unit_id`, `adults`, `children` (capped), `children_over_cap`, `working`, `household`."""
-    max_children = cfg["households"]["max_children"]
+    max_children, adult_age = cfg["households"]["max_children"], cfg["households"]["adult_age"]
 
     is_gq = pl.col("SERIALNO").str.contains("GQ")
     sfn = pl.when(pl.col("SFN").is_in([None, "", "0"])).then(None).otherwise(pl.col("SFN"))
     in_subfamily = sfn.is_not_null() & ~is_gq
     is_reference = pl.col("RELSHIPP") == REFERENCE
     is_spouse = pl.col("RELSHIPP").is_in(SPOUSE_PARTNER)
-    is_own_child_minor = pl.col("RELSHIPP").is_in(OWN_CHILD) & (pl.col("AGEP") < 18)
+    is_own_child_minor = pl.col("RELSHIPP").is_in(OWN_CHILD) & (pl.col("AGEP") < adult_age)
     is_ref_family_named = is_reference | is_spouse | is_own_child_minor
-    is_unattached_minor = (pl.col("AGEP") < 18) & ~in_subfamily & ~is_gq & ~is_ref_family_named
+    is_unattached_minor = (pl.col("AGEP") < adult_age) & ~in_subfamily & ~is_gq & ~is_ref_family_named
     is_working = (pl.col("WAGP") > 0) | (pl.col("SEMP") != 0)
 
     p = persons.with_columns(

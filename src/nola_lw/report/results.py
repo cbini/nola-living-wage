@@ -19,7 +19,8 @@ class Fmt:
     def n(self, est, se=None) -> str:
         if est is None:
             return DASH
-        return f"{est:,.0f}" if se is None else f"{est:,.0f} ± {self.z * se:,.0f}"
+        s = f"{'−' if est < 0 else ''}{abs(est):,.0f}"
+        return s if se is None else f"{s} ± {self.z * se:,.0f}"
 
     def usd(self, est, se=None) -> str:
         """Millions of dollars."""
@@ -38,6 +39,10 @@ class Fmt:
         if est is None:
             return DASH
         return f"{est:.1%}" if se is None else f"{est:.1%} ± {self.z * se * 100:.1f} pp"
+
+    def pp(self, est, se) -> str:
+        """A difference of shares, in percentage points."""
+        return f"{'−' if est < 0 else ''}{abs(est) * 100:.1f} pp ± {self.z * se * 100:.1f} pp"
 
 
 def _years(w: dict) -> str:
@@ -63,11 +68,6 @@ def _row(df: pl.DataFrame, col: str, val) -> dict | None:
 
 # ---------- headline ----------
 
-def _differs(a: tuple, b: tuple, z: float) -> bool:
-    """90% intervals do not overlap. The windows share data, so they are not independent samples."""
-    return abs(a[0] - b[0]) > z * (a[1] + b[1])
-
-
 def _failures(capacity: pl.DataFrame, labels: dict) -> list[tuple[str, str]]:
     """[(line, "both" | "upper" | "lower")] for industry lines that fail either bound."""
     out = []
@@ -81,8 +81,16 @@ def _failures(capacity: pl.DataFrame, labels: dict) -> list[tuple[str, str]]:
     return out
 
 
-def _join(items: list[str]) -> str:
-    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+def _join(items: list[str], conj: str = "and") -> str:
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + f" {conj} " + items[-1]
+
+
+def _share(a, b):
+    return None if a is None or not b else a / b
+
+
+WINDOW_METRICS = {"below": "workers below the floor", "share_below": "the share below",
+                  "total_gap": "the total gap"}
 
 
 def headline(ctx: dict) -> tuple[str, list[str]]:
@@ -107,6 +115,9 @@ def headline(ctx: dict) -> tuple[str, list[str]]:
             f"(a) the private and nonprofit gap is {f.pct(*gt['private_upper'])} of private-industry GOS "
             f"({f.pct(*gt['private_lower'])} at the lower bound), and (b) the all-sector gap is "
             f"{f.pct(*gt['total_upper'])} of total GOS ({f.pct(*gt['total_lower'])} at the lower bound). "
+            f"Excluding {labels[cfg['capacity']['imputed_rent_line']].lower()}, whose GOS includes imputed rent on "
+            f"owner-occupied housing, (b) is {f.pct(*gt['total_upper_ex'])} ({f.pct(*gt['total_lower_ex'])} at the "
+            f"lower bound). "
             f"The government workers' gap would be a {f.pct(*gt['government'])} raise to government compensation. ")
 
     fails = _failures(cap, labels)
@@ -151,12 +162,17 @@ def headline(ctx: dict) -> tuple[str, list[str]]:
              f"On {_years(s)} averages the failing set changes to: "
              f"{_join([f'{labels[ln]} ({b})' for ln, b in sfails]) if sfails else 'none'}. ")
 
-    metrics = {"workers below": "below", "share below": "share_below", "total gap": "total_gap"}
-    differ = [name for name, k in metrics.items() if _differs(ps[k], ss[k], z)]
+    wd = ctx["window_diff"]
+    fmt = {"below": f.n, "share_below": f.pp, "total_gap": f.usd}
+    items = [f"{fmt[k](d, se)} {'in ' if k != 'below' else ''}{name} ({'beyond' if hit else 'within'} its 90% MOE)"
+             for k, name in WINDOW_METRICS.items() for d, se, hit in [wd[k]]]
+    differ = [name for k, name in WINDOW_METRICS.items() if wd[k][2]]
+    same = [name for k, name in WINDOW_METRICS.items() if not wd[k][2]]
     text += (f"The {_years(s)} window gives {f.n(*ss['below'])} workers below the floor and a {f.usd(*ss['total_gap'])} "
-             f"gap; ")
-    text += (f"the two windows differ beyond their MOEs on {_join(differ)} (the 90% intervals do not overlap). "
-             if differ else "their 90% intervals overlap, so the two windows do not differ beyond their MOEs. ")
+             f"gap. Paired on the same replicate weights (the windows share data), {_years(p)} minus {_years(s)} is "
+             f"{_join(items)}, so the windows ")
+    text += (f"differ on {_join(differ)} but not on {_join(same, 'or')}. " if differ and same else
+             "differ on all three. " if differ else "do not differ beyond their MOEs on any of the three. ")
 
     sb = ctx["survey_bea"]
     if sb["pct"] < 0:
@@ -226,6 +242,8 @@ def _tables(ctx: dict) -> str:
     out.append("\n## 3. Gap vs. GDP, compensation and GOS\n")
     tp, ts = _row(p["capacity"], "line", "total"), _row(s["capacity"], "line", "total")
 
+    rent_label = labels[cfg["capacity"]["imputed_rent_line"]]
+
     def rat(r, c):
         return f.pct(r[c], r[f"{c}_se"])
     rows = [["All-sector gap ÷ GDP", rat(tp, "gap_gdp"), rat(ts, "gap_gdp")],
@@ -235,9 +253,15 @@ def _tables(ctx: dict) -> str:
                       ("private_lower", "(a) Private + nonprofit gap ÷ private GOS, lower bound"),
                       ("total_upper", "(b) All-sector gap ÷ total GOS, upper bound"),
                       ("total_lower", "(b) All-sector gap ÷ total GOS, lower bound"),
+                      ("private_upper_ex", f"(a) excluding {rent_label}, upper bound"),
+                      ("private_lower_ex", f"(a) excluding {rent_label}, lower bound"),
+                      ("total_upper_ex", f"(b) excluding {rent_label}, upper bound"),
+                      ("total_lower_ex", f"(b) excluding {rent_label}, lower bound"),
                       ("government", "Government gap ÷ government compensation")]:
         rows.append([name, *_two(f.pct, p["gos_tests"], s["gos_tests"], key)])
     out.append(_table(["Ratio", yp, ys], rows))
+    out.append(f"\n\"Excluding {rent_label}\" removes that industry's gap from the numerator and its GOS from the "
+               "denominator: its GOS includes imputed rent on owner-occupied housing.\n")
     out.append(f"\nBEA denominators (average year, {charts.price_month(cfg)} dollars; place of work):\n")
     pp, sp = _row(p["capacity"], "line", "private"), _row(s["capacity"], "line", "private")
     out.append(_table(["Measure", yp, ys], [
@@ -262,6 +286,8 @@ def _tables(ctx: dict) -> str:
         gap_s = f.usd(b["gap"], b["gap_se"]) if b["gap"] is not None else "no sample"
 
         def cell(c, denom):
+            if line == cfg["crosswalk"]["gov_line"] and denom != "comp":
+                return "n/a"  # excluded from the GOS test
             return "no sample" if a["gap"] is None else rat(a, c) if a[denom] is not None else "suppressed"
         rows.append([label, f.n(ind["below"], ind["below_se"]) if ind else "no sample",
                      f.usd(a["gap"], a["gap_se"]) if a["gap"] is not None else "no sample", gap_s,
@@ -309,13 +335,16 @@ def _tables(ctx: dict) -> str:
     # 7. sensitivities
     out.append("\n## 7. Sensitivities\n")
     out.append(f"All rows use {yp} unless the row says otherwise. \"Beyond MOE\" = the change from the headline "
-               f"exceeds the headline's own 90% MOE on workers below or total gap.\n\n")
+               f"exceeds the headline's own 90% MOE on workers below or total gap; for years_2022_2024, the paired "
+               f"window difference exceeds its own 90% MOE (as in the headline).\n\n")
     sens = ctx["sensitivities"]
     hl = _row(sens, "sensitivity", "headline")
     z = cfg["moe_z"]
+    wd = ctx["window_diff"]
     rows = []
     for r in sens.iter_rows(named=True):
-        beyond = (abs(r["workers_below"] - hl["workers_below"]) > z * hl["workers_below_se"]
+        beyond = (wd["below"][2] or wd["total_gap"][2] if r["sensitivity"] == "years_2022_2024" else
+                  abs(r["workers_below"] - hl["workers_below"]) > z * hl["workers_below_se"]
                   or abs(r["total_gap"] - hl["total_gap"]) > z * hl["total_gap_se"])
         rows.append([r["sensitivity"], r["variant"], f"{r['factor']:.4f}", f.n(r["workers_below"], r["workers_below_se"]),
                      f.usd(r["total_gap"], r["total_gap_se"]), "yes" if beyond else "no"])
@@ -324,7 +353,10 @@ def _tables(ctx: dict) -> str:
 
 
 def _caveats(ctx: dict) -> str:
-    cfg, sb = ctx["cfg"], ctx["survey_bea"]
+    cfg, sb, f = ctx["cfg"], ctx["survey_bea"], Fmt(ctx["cfg"]["moe_z"])
+    rl = cfg["capacity"]["imputed_rent_line"]
+    cap = ctx["windows"]["pool"]["capacity"]
+    rent, priv, tot = (_row(cap, "line", ln) for ln in (rl, "private", "total"))
     return (
         "\n## Caveats\n\n"
         "- **Place of work.** Every worker measure counts jobs located in Orleans Parish, wherever the worker lives, "
@@ -339,6 +371,12 @@ def _caveats(ctx: dict) -> str:
         "- **GOS is modeled**, not published for counties: county GDP − compensation − GDP × Louisiana's net-tax "
         "ratio for the industry. The upper bound includes depreciation and proprietors' income, so it overstates "
         "distributable profit; the lower bound subtracts the national depreciation share by industry.\n"
+        f"- **Real estate.** {ctx['labels'][rl]} (CAGDP2 line {rl}) is {f.pct(_share(rent['gos'], priv['gos']))} of "
+        f"private and {f.pct(_share(rent['gos'], tot['gos']))} of total modeled GOS at the upper bound "
+        f"({f.pct(_share(rent['gos_low'], priv['gos_low']))} and {f.pct(_share(rent['gos_low'], tot['gos_low']))} at "
+        f"the lower bound, {_years(ctx['windows']['pool'])}); its GOS includes imputed rent on owner-occupied housing, "
+        "which no employer can pay wages from, so this share cuts against the capacity argument (table 3 shows the "
+        "GOS tests without it).\n"
         + (f"- **Survey vs. BEA.** Survey wages run {abs(sb['pct']):.1%} below BEA wage disbursements; if the survey "
            "under-reports pay, the gap is overstated." if sb["pct"] < 0 else
            f"- **Survey vs. BEA.** Survey wages run {sb['pct']:.1%} above BEA wage disbursements, so survey "
@@ -442,6 +480,11 @@ def qa_md(ctx: dict) -> str:
     s += (f"\n## Families with more than {cfg['households']['max_children']} children\n\n"
           f"Capped at {cfg['households']['max_children']} for MIT typing: {n_c:,} universe records, "
           f"{f.n(w_c, se_c)} weighted workers.\n")
+    n_m, (w_m, se_m) = q["minors"]
+    age = cfg["households"]["adult_age"]
+    s += (f"\n## Workers under {age}\n\n{n_m:,} universe records, {f.n(w_m, se_m)} weighted workers. The MIT typing "
+          f"(Decision 1) counts them as children in their parents' family unit, so table 6 compares them with that "
+          f"family's threshold rather than a single adult's (the headline floor applies to everyone).\n")
     return s
 
 

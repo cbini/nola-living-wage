@@ -4,7 +4,7 @@ Place of work, ACS PUMS 2020–2024 (average year) with 2022–2024 alongside; M
 
 ## Headline
 
-In 2020–2024 (an average year), 72,897 ± 3,050 of the 195,275 ± 4,502 wage and salary workers whose job is in Orleans Parish (37.3% ± 1.2 pp) earned less than the MIT living-wage floor (1 adult, 0 children), $20.29 an hour in December 2025 dollars. Raising each of them to that floor for the hours they actually work would cost $953.9M ± $53.8M a year. That is 3.1% ± 0.2 pp of Orleans GDP, 5.4% ± 0.3 pp of employee compensation and 6.5% ± 0.4 pp of wage and salary disbursements. Against modeled gross operating surplus (GOS, upper bound; lower bound nets out depreciation): (a) the private and nonprofit gap is 7.9% ± 0.5 pp of private-industry GOS (11.9% ± 0.7 pp at the lower bound), and (b) the all-sector gap is 8.3% ± 0.5 pp of total GOS (13.8% ± 0.8 pp at the lower bound). The government workers' gap would be a 3.0% ± 0.4 pp raise to government compensation. By the self-funding test (an industry fails when its gap exceeds its own GOS), 3 industries fail: Management of companies and enterprises (lower bound only)[^gos-low], Educational services (lower bound only)[^gos-low] and Arts, entertainment, and recreation (both bounds)[^gos-76][^gos-low]. Accommodation and food services, which SPEC §6 expected to fail, passes both bounds: its gap is 24.6% ± 2.9 pp of its upper-bound GOS and 31.2% ± 3.6 pp of its lower bound. Agriculture, forestry, fishing and hunting and Mining, quarrying, and oil and gas extraction cannot be tested because BEA suppresses a needed cell. The same industries fail on 2022–2024 averages. The 2022–2024 window gives 75,843 ± 3,792 workers below the floor and a $962.7M ± $63.3M gap; their 90% intervals overlap, so the two windows do not differ beyond their MOEs. Survey-reported wages for this universe fall 10.3% short of BEA wage and salary disbursements (3.9% short like-for-like, counting salaries that owners of incorporated businesses pay themselves, as BEA does); to the extent the survey under-reports pay, the gap is overstated. Measured instead as annual earnings against the floor × 2,080 hours, the gap is $1,639.3M ± $66.1M, $685.4M above the headline: 12.7 times the headline's MOE.
+In 2020–2024 (an average year), 72,897 ± 3,050 of the 195,275 ± 4,502 wage and salary workers whose job is in Orleans Parish (37.3% ± 1.2 pp) earned less than the MIT living-wage floor (1 adult, 0 children), $20.29 an hour in December 2025 dollars. Raising each of them to that floor for the hours they actually work would cost $953.9M ± $53.8M a year. That is 3.1% ± 0.2 pp of Orleans GDP, 5.4% ± 0.3 pp of employee compensation and 6.5% ± 0.4 pp of wage and salary disbursements. Against modeled gross operating surplus (GOS, upper bound; lower bound nets out depreciation): (a) the private and nonprofit gap is 7.9% ± 0.5 pp of private-industry GOS (11.9% ± 0.7 pp at the lower bound), and (b) the all-sector gap is 8.3% ± 0.5 pp of total GOS (13.6% ± 0.8 pp at the lower bound). Excluding real estate and rental and leasing, whose GOS includes imputed rent on owner-occupied housing, (b) is 11.4% ± 0.7 pp (20.0% ± 1.2 pp at the lower bound). The government workers' gap would be a 3.0% ± 0.4 pp raise to government compensation. By the self-funding test (an industry fails when its gap exceeds its own GOS), 2 industries fail: Educational services (lower bound only)[^gos-low] and Arts, entertainment, and recreation (both bounds)[^gos-76][^gos-low]. Accommodation and food services, which SPEC §6 expected to fail, passes both bounds: its gap is 24.6% ± 2.9 pp of its upper-bound GOS and 31.2% ± 3.6 pp of its lower bound. Agriculture, forestry, fishing and hunting and Mining, quarrying, and oil and gas extraction cannot be tested because BEA suppresses a needed cell. The same industries fail on 2022–2024 averages. The 2022–2024 window gives 75,843 ± 3,792 workers below the floor and a $962.7M ± $63.3M gap. Paired on the same replicate weights (the windows share data), 2020–2024 minus 2022–2024 is −2,946 ± 2,223 workers below the floor (beyond its 90% MOE), −0.5 pp ± 0.9 pp in the share below (within its 90% MOE) and −$8.8M ± $42.0M in the total gap (within its 90% MOE), so the windows differ on workers below the floor but not on the share below or the total gap. Survey-reported wages for this universe fall 10.3% short of BEA wage and salary disbursements (3.9% short like-for-like, counting salaries that owners of incorporated businesses pay themselves, as BEA does); to the extent the survey under-reports pay, the gap is overstated. Measured instead as annual earnings against the floor × 2,080 hours, the gap is $1,639.3M ± $66.1M, $685.4M above the headline: 12.7 times the headline's MOE.
 
 Reading the tables: "—" means not defined[^dash]; "suppressed" means BEA withheld a needed cell; "no sample" means no survey workers in that group. No unknown value is printed as 0.
 
@@ -54,8 +54,15 @@ By class of worker:
 | (a) Private + nonprofit gap ÷ private GOS, upper bound | 7.9% ± 0.5 pp | 7.7% ± 0.5 pp |
 | (a) Private + nonprofit gap ÷ private GOS, lower bound | 11.9% ± 0.7 pp | 11.5% ± 0.8 pp |
 | (b) All-sector gap ÷ total GOS, upper bound | 8.3% ± 0.5 pp | 8.2% ± 0.5 pp |
-| (b) All-sector gap ÷ total GOS, lower bound | 13.8% ± 0.8 pp | 13.5% ± 0.9 pp |
+| (b) All-sector gap ÷ total GOS, lower bound | 13.6% ± 0.8 pp | 13.3% ± 0.9 pp |
+| (a) excluding Real estate and rental and leasing, upper bound | 11.2% ± 0.7 pp | 10.8% ± 0.8 pp |
+| (a) excluding Real estate and rental and leasing, lower bound | 17.6% ± 1.1 pp | 16.9% ± 1.2 pp |
+| (b) excluding Real estate and rental and leasing, upper bound | 11.4% ± 0.7 pp | 11.3% ± 0.8 pp |
+| (b) excluding Real estate and rental and leasing, lower bound | 20.0% ± 1.2 pp | 19.5% ± 1.3 pp |
 | Government gap ÷ government compensation | 3.0% ± 0.4 pp | 3.5% ± 0.6 pp |
+
+
+"Excluding Real estate and rental and leasing" removes that industry's gap from the numerator and its GOS from the denominator: its GOS includes imputed rent on owner-occupied housing.
 
 
 BEA denominators (average year, December 2025 dollars; place of work):
@@ -65,7 +72,7 @@ BEA denominators (average year, December 2025 dollars; place of work):
 | GDP (CAGDP2) | $30,909.0M | $31,518.5M |
 | Employee compensation (CAINC6N) | $17,753.1M | $17,626.7M |
 | Wage and salary disbursements (CAINC5N) | $14,615.0M | $14,554.3M |
-| Total GOS, upper / lower bound | $11,488.6M / $6,918.7M | $11,734.7M / $7,126.5M |
+| Total GOS, upper / lower bound | $11,488.6M / $7,016.6M | $11,734.7M / $7,245.0M |
 | Private GOS, upper / lower bound | $10,618.4M / $7,016.6M | $10,886.5M / $7,245.0M |
 
 
@@ -88,14 +95,14 @@ An industry fails when its gap exceeds its own modeled GOS. The government line 
 | Finance and insurance | 1,600 ± 423 | $15.8M ± $4.9M | $15.3M ± $6.9M | 1.7% ± 0.5 pp | 2.4% ± 0.7 pp | 3.7% ± 1.1 pp | pass / pass | pass / pass |
 | Real estate and rental and leasing | 1,130 ± 458 | $13.2M ± $6.0M | $7.0M ± $5.3M | 5.9% ± 2.7 pp | 0.4% ± 0.2 pp | 0.6% ± 0.3 pp | pass / pass | pass / pass |
 | Professional, scientific, and technical services | 2,329 ± 474 | $30.2M ± $8.0M | $38.4M ± $12.8M | 1.5% ± 0.4 pp | 2.0% ± 0.5 pp | 2.5% ± 0.7 pp | pass / pass | pass / pass |
-| Management of companies and enterprises | 0 ± 0 | $0.0M ± $0.0M | $0.0M ± $0.0M | 0.0% ± 0.0 pp | 0.0% ± 0.0 pp | — | pass / fail | pass / fail |
+| Management of companies and enterprises | 0 ± 0 | $0.0M ± $0.0M | $0.0M ± $0.0M | 0.0% ± 0.0 pp | 0.0% ± 0.0 pp | — | pass / pass | pass / pass |
 | Administrative and support and waste management and remediation services | 3,020 ± 508 | $36.4M ± $8.2M | $35.9M ± $9.9M | 4.5% ± 1.0 pp | 15.3% ± 3.4 pp | 23.2% ± 5.2 pp | pass / pass | pass / pass |
 | Educational services | 5,366 ± 819 | $60.0M ± $12.4M | $73.3M ± $18.2M | 4.1% ± 0.9 pp | 48.4% ± 10.0 pp | — | pass / fail | pass / fail |
 | Health care and social assistance | 9,323 ± 937 | $116.4M ± $16.3M | $105.2M ± $16.5M | 5.6% ± 0.8 pp | 22.4% ± 3.1 pp | 36.3% ± 5.1 pp | pass / pass | pass / pass |
 | Arts, entertainment, and recreation | 2,489 ± 452 | $32.0M ± $8.8M | $35.1M ± $13.0M | 11.2% ± 3.1 pp | — | — | fail / fail | fail / fail |
 | Accommodation and food services | 14,793 ± 1,265 | $200.1M ± $23.3M | $196.3M ± $32.0M | 12.8% ± 1.5 pp | 24.6% ± 2.9 pp | 31.2% ± 3.6 pp | pass / pass | pass / pass |
 | Other services (except government and government enterprises) | 3,170 ± 656 | $52.1M ± $12.4M | $47.5M ± $13.4M | 9.4% ± 2.2 pp | 32.6% ± 7.7 pp | 57.8% ± 13.7 pp | pass / pass | pass / pass |
-| Government and government enterprises | 9,933 ± 969 | $116.3M ± $17.3M | $129.9M ± $24.1M | 3.0% ± 0.4 pp | 12.0% ± 1.8 pp | — | n/a / n/a | n/a / n/a |
+| Government and government enterprises | 9,933 ± 969 | $116.3M ± $17.3M | $129.9M ± $24.1M | 3.0% ± 0.4 pp | n/a | n/a | n/a / n/a | n/a / n/a |
 
 
 ## 5. Commuter leakage
@@ -133,7 +140,7 @@ Each worker against the Orleans MIT threshold for their own family unit. The ann
 
 ## 7. Sensitivities
 
-All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the change from the headline exceeds the headline's own 90% MOE on workers below or total gap.
+All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the change from the headline exceeds the headline's own 90% MOE on workers below or total gap; for years_2022_2024, the paired window difference exceeds its own 90% MOE (as in the headline).
 
 
 | Sensitivity | Variant | Threshold factor | Workers below | Total gap | Beyond MOE |
@@ -148,7 +155,7 @@ All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the chang
 | outliers_included | outliers_included | 1.0000 | 73,479 ± 3,014 | $974.9M ± $51.5M | no |
 | hours_rule | hours_rule | 1.0000 | 81,761 ± 3,144 | $1,639.3M ± $66.1M | yes |
 | la_residents_only | la_residents_only | 1.0000 | 71,471 ± 2,930 | $934.0M ± $53.1M | no |
-| years_2022_2024 | years_2022_2024 | 1.0000 | 75,843 ± 3,792 | $962.7M ± $63.3M | no |
+| years_2022_2024 | years_2022_2024 | 1.0000 | 75,843 ± 3,792 | $962.7M ± $63.3M | yes |
 | metro_thresholds | metro_thresholds | 1.0000 | 73,357 ± 3,077 | $981.1M ± $54.9M | no |
 
 ## Charts
@@ -163,10 +170,11 @@ All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the chang
 - **Full-time basis.** MIT thresholds assume 2,080 hours a year. The headline counts actual hours, so a part-time worker above the hourly floor can still fall far short in annual income; the hours-rule sensitivity (table 7; its effect is stated in the headline) and the annual household columns (table 6) show this.
 - **Tips and cash pay** are in `WAGP` only as reported, and are likely undercounted for accommodation and food services, which would overstate that industry's gap.
 - **GOS is modeled**, not published for counties: county GDP − compensation − GDP × Louisiana's net-tax ratio for the industry. The upper bound includes depreciation and proprietors' income, so it overstates distributable profit; the lower bound subtracts the national depreciation share by industry.
+- **Real estate.** Real estate and rental and leasing (CAGDP2 line 56) is 30.5% of private and 28.2% of total modeled GOS at the upper bound (33.1% and 33.1% at the lower bound, 2020–2024); its GOS includes imputed rent on owner-occupied housing, which no employer can pay wages from, so this share cuts against the capacity argument (table 3 shows the GOS tests without it).
 - **Survey vs. BEA.** Survey wages run 10.3% below BEA wage disbursements; if the survey under-reports pay, the gap is overstated. BEA also counts pay the survey universe misses (see checkpoint.md).
 - **Dollars.** Wages and BEA values are in December 2025 dollars (MIT's price basis), converted by CPI series CUUR0300SA0; BEA values year by year before averaging.
 - **MOEs** are 90% (replicate weights, successive-difference formula). Ratios' MOEs reflect survey error in the gap only; BEA totals are treated as fixed.
 
-[^gos-76]: Modeled upper-bound GOS for Arts, entertainment, and recreation is negative (−$4.8M a year): the method subtracts Louisiana's ratio of taxes on production less subsidies to GDP for this line (31%) from an Orleans line whose compensation is already 70% of its GDP. It is reported as a failure under the SPEC §6 method. Louisiana's arts-line tax ratio plausibly reflects casino gaming taxes, which may not fall on Orleans's arts line in the same proportion.
-[^gos-low]: Modeled lower-bound GOS is ≤ 0 for Management of companies and enterprises, Educational services and Arts, entertainment, and recreation (the national consumption-of-fixed-capital share applied to county GDP leaves nothing), so the lower-bound model gives no capacity there and a lower-bound "fail" says nothing about pay (Management of companies and enterprises gap $0.0M; Educational services gap $60.0M; Arts, entertainment, and recreation gap $32.0M).
+[^gos-76]: Modeled upper-bound GOS for Arts, entertainment, and recreation is negative (−$4.8M a year): the method subtracts Louisiana's ratio of taxes on production less subsidies to GDP for this line (31%) from an Orleans line whose compensation is already 70% of its GDP. It is reported as a failure under the SPEC §6 method.
+[^gos-low]: Modeled lower-bound GOS is ≤ 0 for Educational services and Arts, entertainment, and recreation (the national consumption-of-fixed-capital share applied to county GDP leaves nothing), so the lower-bound model gives no capacity there and a lower-bound "fail" says nothing about pay (Educational services gap $60.0M; Arts, entertainment, and recreation gap $32.0M).
 [^dash]: A ratio whose denominator is ≤ 0 (e.g. negative modeled GOS), or a statistic for an empty household cell.

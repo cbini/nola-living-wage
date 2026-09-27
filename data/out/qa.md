@@ -35,3 +35,7 @@ Louisiana: max |SAGDP2 − SAGDP4 − SAGDP3 − SAGDP7| over line 1 and the 20 
 ## Families with more than 3 children
 
 Capped at 3 for MIT typing: 87 universe records, 2,464 ± 627 weighted workers.
+
+## Workers under 18
+
+59 universe records, 1,194 ± 327 weighted workers. The MIT typing (Decision 1) counts them as children in their parents' family unit, so table 6 compares them with that family's threshold rather than a single adult's (the headline floor applies to everyone).

@@ -98,7 +98,7 @@ def bea_panel(bea: pl.DataFrame, fa: pl.DataFrame, industries: pl.DataFrame, cfg
 
     rows = []
     for year in range(y0, y1 + 1):
-        line_terms, gov_gos = [], None  # (gdp * cfc_share) per non-government line, for total/private
+        line_terms, gov_low = [], None  # (gdp * cfc_share) per non-government line, for private
         for line, cainc6n_lines, fa_line in ind:
             gdp = _cell(bea, "CAGDP2", line, county, year)
             comp = _sum_cells(bea, "CAINC6N", cainc6n_lines, county, year)
@@ -112,7 +112,7 @@ def bea_panel(bea: pl.DataFrame, fa: pl.DataFrame, industries: pl.DataFrame, cfg
                 cfc_share = None if fa_val is None or nat_gdp is None else fa_val / nat_gdp
             term = None if gdp is None or cfc_share is None else gdp * cfc_share
             if line == gov_line:
-                gos_low, gov_gos = 0.0, g
+                gos_low = gov_low = 0.0
             else:
                 gos_low = None if g is None or term is None else g - term
                 line_terms.append(term)
@@ -125,16 +125,18 @@ def bea_panel(bea: pl.DataFrame, fa: pl.DataFrame, industries: pl.DataFrame, cfg
         t_comp = _sum_cells(bea, "CAINC6N", cap["cainc6n_total"], county, year)
         t_tax = _tax_ratio(bea, cap["total_line"], state, year)
         t_gos = gos(t_gdp, t_comp, t_tax)
-        t_gos_low = None if t_gos is None or terms_sum is None or gov_gos is None else t_gos - terms_sum - gov_gos
         t_wages = _cell(bea, wl["table"], wl["line"], county, year)
-        rows.append({"line": "total", "year": year, "gdp": t_gdp, "comp": t_comp, "tax_ratio": t_tax,
-                    "cfc_share": None, "gos": t_gos, "gos_low": t_gos_low, "wages": t_wages})
 
         p_gdp = _cell(bea, "CAGDP2", cap["private_line"], county, year)
         p_comp = _sum_cells(bea, "CAINC6N", cap["cainc6n_private"], county, year)
         p_tax = _tax_ratio(bea, cap["private_line"], state, year)
         p_gos = gos(p_gdp, p_comp, p_tax)
         p_gos_low = None if p_gos is None or terms_sum is None else p_gos - terms_sum
+        # total lower bound = private lower bound + government lower bound, so it can't undercut private
+        # (total GOS less CFC would, because total and private use different aggregate tax ratios)
+        t_gos_low = None if p_gos_low is None or gov_low is None else p_gos_low + gov_low
+        rows.append({"line": "total", "year": year, "gdp": t_gdp, "comp": t_comp, "tax_ratio": t_tax,
+                    "cfc_share": None, "gos": t_gos, "gos_low": t_gos_low, "wages": t_wages})
         rows.append({"line": "private", "year": year, "gdp": p_gdp, "comp": p_comp, "tax_ratio": p_tax,
                     "cfc_share": None, "gos": p_gos, "gos_low": p_gos_low, "wages": None})
 
@@ -199,6 +201,7 @@ def capacity_table(gap_by_line: pl.DataFrame, panel_mean: pl.DataFrame, gov_line
     def _status(gos_col: str) -> pl.Expr:
         return (pl.when(pl.col("line") == gov_line).then(pl.lit("n/a"))
                   .when(pl.col("gap").is_null()).then(pl.lit("no sample"))
+                  .when(pl.col("gap") == 0).then(pl.lit("pass"))  # nothing to fund, whatever the GOS
                   .when(pl.col(gos_col).is_null()).then(pl.lit("suppressed"))
                   .when(pl.col("gap") <= pl.col(gos_col)).then(pl.lit("pass"))
                   .otherwise(pl.lit("fail")))
@@ -207,12 +210,18 @@ def capacity_table(gap_by_line: pl.DataFrame, panel_mean: pl.DataFrame, gov_line
 
 def gos_tests(u: pl.DataFrame, panel_mean: pl.DataFrame, cfg) -> dict[str, tuple[float | None, float | None]]:
     """(a) private+nonprofit gap / private GOS (upper, lower); (b) all-sector gap / total GOS
-    (upper, lower); government gap / government (`crosswalk.gov_line`) compensation. Each ratio is
-    null (not inf or sign-inverted) when its denominator is <= 0."""
-    gov_line = cfg["crosswalk"]["gov_line"]
+    (upper, lower); government gap / government (`crosswalk.gov_line`) compensation; and "*_ex" for
+    (a), (b) with the `capacity.imputed_rent_line` (real estate, whose GOS includes imputed rent on
+    owner-occupied housing) removed from both gap and GOS. Each ratio is null (not inf or
+    sign-inverted) when its denominator is null or <= 0."""
+    gov_line, rent_line = cfg["crosswalk"]["gov_line"], cfg["capacity"]["imputed_rent_line"]
 
-    def denom(line: str, col: str) -> float:
-        return panel_mean.filter(pl.col("line") == line)[col][0]
+    def denom(line: str, col: str, ex: bool = False) -> float | None:
+        d = panel_mean.filter(pl.col("line") == line)[col][0]
+        if not ex:
+            return d
+        r = panel_mean.filter(pl.col("line") == rent_line)[col][0]
+        return None if d is None or r is None else d - r
 
     def scale(est_se: tuple[float, float], d: float) -> tuple[float | None, float | None]:
         if d is None or d <= 0:
@@ -223,6 +232,9 @@ def gos_tests(u: pl.DataFrame, panel_mean: pl.DataFrame, cfg) -> dict[str, tuple
     private_gap = floor_summary(u.filter(pl.col("cow_class").is_in(_private_classes(cfg))))["total_gap"]
     total_gap = floor_summary(u)["total_gap"]
     gov_gap = floor_summary(u.filter(pl.col("bea_line") == gov_line))["total_gap"]
+    u_ex = u.filter(pl.col("bea_line") != rent_line)
+    private_gap_ex = floor_summary(u_ex.filter(pl.col("cow_class").is_in(_private_classes(cfg))))["total_gap"]
+    total_gap_ex = floor_summary(u_ex)["total_gap"]
 
     return {
         "private_upper": scale(private_gap, denom("private", "gos")),
@@ -230,4 +242,8 @@ def gos_tests(u: pl.DataFrame, panel_mean: pl.DataFrame, cfg) -> dict[str, tuple
         "total_upper": scale(total_gap, denom("total", "gos")),
         "total_lower": scale(total_gap, denom("total", "gos_low")),
         "government": scale(gov_gap, denom(gov_line, "comp")),
+        "private_upper_ex": scale(private_gap_ex, denom("private", "gos", ex=True)),
+        "private_lower_ex": scale(private_gap_ex, denom("private", "gos_low", ex=True)),
+        "total_upper_ex": scale(total_gap_ex, denom("total", "gos", ex=True)),
+        "total_lower_ex": scale(total_gap_ex, denom("total", "gos_low", ex=True)),
     }

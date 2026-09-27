@@ -216,12 +216,14 @@ def test_bea_panel_suppression_gov_and_total_private_arithmetic():
     total = panel.filter(pl.col("line") == "total").row(0, named=True)
     t_gos = 3000.0 - 1000.0 - 3000.0 * 0.1  # 1700.0
     assert total["gos"] == pytest.approx(t_gos)
-    assert total["gos_low"] == pytest.approx(t_gos - 200.0 - gov["gos"])
 
     private = panel.filter(pl.col("line") == "private").row(0, named=True)
     p_gos = 1000.0 - 1000.0 - 1000.0 * 0.1  # -100.0
     assert private["gos"] == pytest.approx(p_gos)
     assert private["gos_low"] == pytest.approx(p_gos - 200.0)
+    # total lower bound = private lower bound + government lower bound (0); not total GOS less CFC,
+    # which can undercut the private bound because total/private use different aggregate tax ratios
+    assert total["gos_low"] == pytest.approx(private["gos_low"] + gov["gos_low"])
 
     pool_mean = capacity.window_mean(panel, [2020])
     gbl = pl.DataFrame({"line": ["A", "83", "total", "private"], "gap": [5.0, 5.0, 5.0, 5.0],
@@ -246,18 +248,51 @@ def test_gap_by_line_uses_config_private_classes():
 
 
 def test_gos_tests_nulls_ratio_for_nonpositive_denominator():
-    cfg = {"crosswalk": {"gov_line": "83"}, "universe": {"cow_class": {"1": "private", "2": "nonprofit", "3": "public"}}}
+    cfg = {"crosswalk": {"gov_line": "83"}, "capacity": {"imputed_rent_line": "56"},
+           "universe": {"cow_class": {"1": "private", "2": "nonprofit", "3": "public"}}}
     u = pl.DataFrame({
         "cow_class": ["private", "public"], "bea_line": ["11", "83"],
         "wage_hr": [10.0, 10.0], "hours": [2000.0, 2000.0],
         "below": [True, True], "gap_hr": [5.0, 5.0], "gap_yr": [10000.0, 10000.0],
         "PWGTP": [1, 1],
     } | {f"PWGTP{i}": [1, 1] for i in range(1, 81)})
-    panel_mean = pl.DataFrame({"line": ["private", "total", "83"], "gos": [-1.0, 100.0, None],
-                               "gos_low": [10.0, -5.0, None], "comp": [None, None, 0.0]},
+    panel_mean = pl.DataFrame({"line": ["private", "total", "83", "56"], "gos": [-1.0, 100.0, None, None],
+                               "gos_low": [10.0, -5.0, None, None], "comp": [None, None, 0.0, None]},
                               schema={"line": pl.Utf8, "gos": pl.Float64, "gos_low": pl.Float64, "comp": pl.Float64})
     out = capacity.gos_tests(u, panel_mean, cfg)
     assert out["private_upper"] == (None, None)  # private gos <= 0
     assert out["total_lower"] == (None, None)  # total gos_low <= 0
     assert out["government"] == (None, None)  # gov comp <= 0
     assert out["private_lower"][0] is not None
+    assert out["private_lower_ex"] == (None, None)  # imputed-rent line GOS suppressed
+
+
+def test_zero_gap_passes_both_bounds():
+    """Nothing to fund: a zero gap passes even when GOS is <= 0."""
+    panel_mean = pl.DataFrame({"line": ["64"], "gdp": [500.0], "comp": [400.0], "tax_ratio": [0.0],
+                               "cfc_share": [0.5], "gos": [100.0], "gos_low": [-150.0], "wages": [None]},
+                              schema=PANEL_SCHEMA)
+    gap_by_line = pl.DataFrame({"line": ["64"], "gap": [0.0], "gap_se": [0.0]})
+    row = capacity.capacity_table(gap_by_line, panel_mean, "83").row(0, named=True)
+    assert (row["self_funding"], row["self_funding_low"]) == ("pass", "pass")
+
+
+def test_gos_tests_ex_imputed_rent_line():
+    """Ex-real-estate tests drop the line's gap from the numerator and its GOS from the denominator."""
+    cfg = {"crosswalk": {"gov_line": "83"}, "capacity": {"imputed_rent_line": "56"},
+           "universe": {"cow_class": {"1": "private", "3": "public"}}}
+    u = pl.DataFrame({
+        "cow_class": ["private", "private", "public"], "bea_line": ["11", "56", "83"],
+        "wage_hr": [10.0] * 3, "hours": [2000.0] * 3,
+        "below": [True] * 3, "gap_hr": [5.0] * 3, "gap_yr": [10000.0, 30000.0, 10000.0],
+        "PWGTP": [1, 1, 1],
+    } | {f"PWGTP{i}": [1, 1, 1] for i in range(1, 81)})
+    panel_mean = pl.DataFrame({"line": ["private", "total", "83", "56"], "gos": [400e3, 500e3, 1.0, 100e3],
+                               "gos_low": [300e3, 300e3, 0.0, 200e3], "comp": [None, None, 1e6, None]},
+                              schema={"line": pl.Utf8, "gos": pl.Float64, "gos_low": pl.Float64, "comp": pl.Float64})
+    out = capacity.gos_tests(u, panel_mean, cfg)
+    assert out["private_upper"][0] == pytest.approx(40e3 / 400e3)
+    assert out["private_upper_ex"][0] == pytest.approx(10e3 / 300e3)
+    assert out["private_lower_ex"][0] == pytest.approx(10e3 / 100e3)
+    assert out["total_upper_ex"][0] == pytest.approx(20e3 / 400e3)
+    assert out["total_lower_ex"][0] == pytest.approx(20e3 / 100e3)

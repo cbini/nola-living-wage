@@ -8,12 +8,19 @@ from nola_lw.fetch.mit import HOUSEHOLD_KEYS
 SUMMARY_KEYS = ["workers", "below", "share_below", "total_gap", "mean_short_hr", "mean_short_yr"]
 
 
+def _span_factor(years: list[int], pool: list[int]) -> float:
+    return (pool[1] - pool[0] + 1) / (years[1] - years[0] + 1)
+
+
+def _in_years(years: list[int]) -> pl.Expr:
+    return pl.col("year").cast(pl.Int64).is_between(years[0], years[1])
+
+
 def year_subset(df: pl.DataFrame, years: list[int], pool: list[int]) -> pl.DataFrame:
     """Filter to `years` [start, end] and rescale PWGTP/PWGTP1..80 by (pool span ÷ subset span)."""
-    factor = (pool[1] - pool[0] + 1) / (years[1] - years[0] + 1)
+    factor = _span_factor(years, pool)
     weight_cols = ["PWGTP"] + [f"PWGTP{i}" for i in range(1, N_REPS + 1)]
-    return (df.filter(pl.col("year").cast(pl.Int64).is_between(years[0], years[1]))
-              .with_columns([(pl.col(c) * factor) for c in weight_cols]))
+    return df.filter(_in_years(years)).with_columns([(pl.col(c) * factor) for c in weight_cols])
 
 
 def add_floor_gap(u: pl.DataFrame, floor: float) -> pl.DataFrame:
@@ -33,18 +40,40 @@ def _safe_ratio(num: float, den: float) -> float:
     return num / den if den else 0.0
 
 
-def floor_summary(u: pl.DataFrame) -> dict[str, tuple[float, float]]:
-    below = pl.col("below")
-    return {
-        "workers": replicate_estimate(u, lambda d, w: wsum(d, w)),
-        "below": replicate_estimate(u, lambda d, w: wsum(d.filter(below), w)),
-        "share_below": replicate_estimate(u, lambda d, w: _safe_ratio(wsum(d.filter(below), w), wsum(d, w))),
-        "total_gap": replicate_estimate(u, lambda d, w: wsum(d, w, "gap_yr")),
-        "mean_short_hr": replicate_estimate(
-            u, lambda d, w: _safe_ratio(wsum(d.filter(below), w, "gap_hr"), wsum(d.filter(below), w))),
-        "mean_short_yr": replicate_estimate(
-            u, lambda d, w: _safe_ratio(wsum(d.filter(below), w, "gap_yr"), wsum(d.filter(below), w))),
-    }
+_BELOW = pl.col("below")
+STATS = {
+    "workers": lambda d, w: wsum(d, w),
+    "below": lambda d, w: wsum(d.filter(_BELOW), w),
+    "share_below": lambda d, w: _safe_ratio(wsum(d.filter(_BELOW), w), wsum(d, w)),
+    "total_gap": lambda d, w: wsum(d, w, "gap_yr"),
+    "mean_short_hr": lambda d, w: _safe_ratio(wsum(d.filter(_BELOW), w, "gap_hr"), wsum(d.filter(_BELOW), w)),
+    "mean_short_yr": lambda d, w: _safe_ratio(wsum(d.filter(_BELOW), w, "gap_yr"), wsum(d.filter(_BELOW), w)),
+}
+WINDOW_DIFF_KEYS = ["below", "share_below", "total_gap"]
+
+
+def floor_summary(u: pl.DataFrame) -> dict[str, tuple[float | None, float | None]]:
+    """Each `STATS` entry as (est, se). Mean shortfalls are (None, None) when nobody is below the floor."""
+    out = {k: replicate_estimate(u, stat) for k, stat in STATS.items()}
+    if not u["below"].any():
+        out["mean_short_hr"] = out["mean_short_yr"] = (None, None)
+    return out
+
+
+def window_difference(g: pl.DataFrame, years: list[int], pool: list[int], z: float
+                      ) -> dict[str, tuple[float, float, bool]]:
+    """Paired pool − subset difference for `WINDOW_DIFF_KEYS`: d = stat(pool) − stat(subset rows,
+    weights × pool/subset span), with the same replicate weight in both terms (the windows share
+    data). `g` is the `add_floor_gap` pool frame. Returns (d, se(d), |d| > z·se(d))."""
+    factor, insub = _span_factor(years, pool), _in_years(years)
+
+    def paired(stat):
+        return lambda d, w: stat(d, w) - stat(d.filter(insub).with_columns(pl.col(w) * factor), w)
+    out = {}
+    for k in WINDOW_DIFF_KEYS:
+        d, se = replicate_estimate(g, paired(STATS[k]))
+        out[k] = (d, se, abs(d) > z * se)
+    return out
 
 
 def summary_by(u: pl.DataFrame, col: str) -> pl.DataFrame:

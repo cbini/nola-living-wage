@@ -42,8 +42,8 @@ def test_floor_summary_no_one_below_floor():
     u = gaps.add_floor_gap(df, 20.0)
     s = gaps.floor_summary(u)
     assert s["below"][0] == pytest.approx(0.0)
-    assert s["mean_short_hr"][0] == pytest.approx(0.0)
-    assert s["mean_short_yr"][0] == pytest.approx(0.0)
+    for k in ("mean_short_hr", "mean_short_yr"):
+        assert s[k] == (None, None)  # undefined, not $0
 
 
 def test_household_table_has_12_rows_in_order():
@@ -94,3 +94,28 @@ def test_leakage_shares_sum_to_one():
     lk = gaps.leakage(u)
     assert lk["share_workers"].sum() == pytest.approx(1.0)
     assert lk["share_gap"].sum() == pytest.approx(1.0)
+
+
+def _two_windows(rep_noise: float) -> pl.DataFrame:
+    """Five years, one row each; 2020-21 workers are below a $20 floor, 2022-24 are not.
+    Replicate weights swing ±rep_noise around PWGTP, alternating by replicate, early rows against late rows."""
+    rows = {"year": [str(y) for y in range(2020, 2025)], "wage_hr": [10.0, 10.0, 30.0, 30.0, 30.0],
+            "hours": [2000.0] * 5, "PWGTP": [10.0] * 5}
+    rows |= {f"PWGTP{r}": [10.0 * (1 + rep_noise * (-1) ** (r + (i >= 2))) for i in range(5)] for r in range(1, 81)}
+    return gaps.add_floor_gap(pl.DataFrame(rows), 20.0)
+
+
+def test_window_difference_paired_significant():
+    out = gaps.window_difference(_two_windows(0.01), [2022, 2024], [2020, 2024], z=1.645)
+    d, se, differs = out["below"]
+    assert d == pytest.approx(20.0)  # pool 20 below; subset 0 below
+    assert se > 0 and differs
+    assert out["share_below"][0] == pytest.approx(0.4) and out["share_below"][2]
+    assert out["total_gap"][0] == pytest.approx(20 * 10 * 2000) and out["total_gap"][2]
+
+
+def test_window_difference_paired_not_significant():
+    out = gaps.window_difference(_two_windows(0.9), [2022, 2024], [2020, 2024], z=1.645)
+    for k in ("below", "share_below", "total_gap"):
+        d, se, differs = out[k]
+        assert abs(d) <= 1.645 * se and not differs
