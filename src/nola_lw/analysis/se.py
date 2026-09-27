@@ -1,6 +1,6 @@
 """ACS successive-difference replicate SEs (80 replicate weights) and 90% MOEs."""
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import polars as pl
 
@@ -17,7 +17,12 @@ def moe90(se: float, z: float) -> float:
     return z * se
 
 
+def replicate_estimate(df: pl.DataFrame, stat: Callable[[pl.DataFrame, str], float]) -> tuple[float, float]:
+    """Evaluate `stat(df, w)` for `w` = PWGTP and each of PWGTP1..80, then the replicate SE."""
+    full = stat(df, "PWGTP")
+    reps = [stat(df, f"PWGTP{i}") for i in range(1, N_REPS + 1)]
+    return full, replicate_se(full, reps)
+
+
 def weighted_total(df: pl.DataFrame, value_col: str, weight_prefix: str = "PWGTP") -> tuple[float, float]:
-    cols = [weight_prefix] + [f"{weight_prefix}{i}" for i in range(1, N_REPS + 1)]
-    sums = df.select([(pl.col(value_col) * pl.col(c)).sum().alias(c) for c in cols]).row(0)
-    return sums[0], replicate_se(sums[0], sums[1:])
+    return replicate_estimate(df, lambda d, w: (d[value_col] * d[w.replace("PWGTP", weight_prefix)]).sum())
