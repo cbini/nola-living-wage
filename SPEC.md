@@ -129,7 +129,7 @@ nola-living-wage/
 ├── README.md               # how to reproduce in three commands
 ├── pyproject.toml          # uv-managed; python ≥3.12; duckdb, polars, httpx, pyyaml, pytest
 ├── config.yaml             # years, floor household type, thresholds, sensitivity params
-├── .env.example            # BEA_API_KEY, BLS_API_KEY (optional; BEA key is proxy-held in cloud sessions)
+├── .env.example            # BEA_API_KEY, BLS_API_KEY (both optional; bulk files need no key)
 ├── src/nola_lw/
 │   ├── fetch/              # one module per source; writes to data/raw/ with a manifest (url, date, sha256)
 │   ├── build/              # universe, wages, household types, crosswalk

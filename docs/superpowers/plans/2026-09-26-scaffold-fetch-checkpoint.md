@@ -84,7 +84,7 @@ tests/test_*.py
   - `checkpoint: {wage_tolerance: 0.15}`, `moe_z: 1.645`
 - [ ] **Step 3: Write the failing test** `tests/test_config.py::test_config_has_required_keys`: `cfg = load_config()`; assert `cfg["orleans"]["powsp"] == "022"`, `cfg["cpi"]["target"] == "2025-12"`, `cfg["checkpoint"]["wage_tolerance"] == 0.15`, `len(cfg["pums"]["other_states"]) == 49`, `"la" not in cfg["pums"]["other_states"]`, and that every value in `orleans` is a `str`.
 - [ ] **Step 4:** Implement `load_config` with `yaml.safe_load`, and a `main()` stub whose subcommands print "not implemented". Run `uv run pytest -q`; it passes.
-- [ ] **Step 5:** Create `.env.example` with the three key names and empty values. Replace the README's Reproduce section with `uv sync`, `cp .env.example .env` and `uv run nola-lw all`.
+- [ ] **Step 5:** Create `.env.example` with `BEA_API_KEY=` and `BLS_API_KEY=` (both optional). Replace the README's Reproduce section with `uv sync`, `cp .env.example .env` and `uv run nola-lw all`.
 - [ ] **Step 6:** Commit: `scaffold: package, config, CLI skeleton`.
 
 ### Task 2: Download helper and manifest
