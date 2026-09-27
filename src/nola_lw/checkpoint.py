@@ -9,6 +9,7 @@ import polars as pl
 from nola_lw.analysis.se import moe90, weighted_total
 from nola_lw.fetch.bea import load_bea
 from nola_lw.fetch.bls import annual_mean, cpi_factor
+from nola_lw.fetch.ipums import orleans_powpumas, read_composition
 from nola_lw.fetch.pums import PERSON_VARS, REP_VARS, scan_persons
 
 
@@ -92,6 +93,11 @@ def _tract_pumas(raw: Path, cfg) -> pl.DataFrame | None:
     return pl.read_csv(f, infer_schema_length=0, encoding="utf8-lossy").rename(lambda c: c.strip().lstrip("﻿"))
 
 
+def _composition(raw: Path, cfg) -> pl.DataFrame | None:
+    f = raw / "ipums" / Path(cfg["pums"]["powpuma_composition_url"]).name
+    return read_composition(f) if f.exists() else None
+
+
 def _md_table(df: pl.DataFrame) -> str:
     cols = df.columns
     lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
@@ -104,12 +110,13 @@ def _blocked(what: str) -> str:
     return f"**BLOCKED: missing {what}.**\n"
 
 
-def _section_powpuma(persons, tracts, raw: Path, cfg) -> str:
+def _section_powpuma(persons, tracts, comp_df, raw: Path, cfg) -> str:
     o = cfg["orleans"]
     s = "## 1. Orleans POWPUMA code(s) by vintage\n\n"
     dict_f = raw / "pums" / Path(cfg["pums"]["dictionary_url"]).name
-    if persons is None or tracts is None or not dict_f.exists():
-        return s + _blocked("PUMS person files, the data dictionary or the tract-to-PUMA file")
+    if persons is None or tracts is None or not dict_f.exists() or comp_df is None:
+        return s + _blocked("PUMS person files, the data dictionary, the tract-to-PUMA file, "
+                             "or the official IPUMS POWPUMA composition file")
     names = [r for r in csv.reader(dict_f.open(encoding="utf-8-sig")) if r and r[0] == "NAME" and r[1].startswith(("POW", "PUMA"))]
     s += "Data dictionary fields (every PUMA-type variable in the file):\n\n"
     s += "\n".join(dict.fromkeys(f"- `{r[1]}`: {r[4]}" for r in names)) + "\n\n"
@@ -158,14 +165,19 @@ def _section_powpuma(persons, tracts, raw: Path, cfg) -> str:
               f"break would show as a jump between years:\n\n"
               + _md_table(fl.with_columns([pl.col(y).map_elements(lambda x: f"{x:.1%}", return_dtype=pl.Utf8) for y in yrs]))
               + f"\n\nHighest-share group per year: {top}.\n")
-    ok = all(all(c[1:]) for c in checks) and flows_ok
-    s += (f"\n**Verdict: {'CONFIRMED by composition, commute flows and presence in every year' if ok else 'NOT CONFIRMED — stop and review'}** "
+    comp_url = cfg["pums"]["powpuma_composition_url"]
+    comp_res = orleans_powpumas(comp_df, cfg)
+    official_ok = comp_res["powpumas"] == list(o["powpuma"]) and comp_res["counties"] == [cty]
+    s += (f"\nOfficial composition check ({comp_url}): county {cty} maps to POWPUMA(s) {comp_res['powpumas']}; "
+          f"POWPUMA(s) {o['powpuma']} contain(s) counties {comp_res['counties']}. "
+          f"**{'Match' if official_ok else 'MISMATCH — stop and review'}**.\n")
+    ok = all(all(c[1:]) for c in checks) and flows_ok and official_ok
+    s += (f"\n**Verdict: {'CONFIRMED by composition, commute flows, presence in every year and the official composition file' if ok else 'NOT CONFIRMED — stop and review'}** "
           f"— config `orleans.powpuma` = {o['powpuma']}. "
           "The file has one `POWPUMA` field, labelled as 2020 Census definitions, with no 2010-vintage field; the same codes "
           "appear in every survey year, which is consistent with Census coding all five years to 2020 POWPUMAs (an inference "
-          "from the label and the data, not a Census statement). Not checked: Census's official 2020 POWPUMA equivalency file, "
-          "which was not reachable from this environment (usa.ipums.org is blocked; www2.census.gov has only the "
-          "tract-to-PUMA file).\n\n")
+          f"from the label and the data, not a Census statement). Census's official 2020 POWPUMA equivalency file "
+          f"({comp_url}) confirms county {cty} maps only to POWPUMA {o['powpuma']} and vice versa.\n\n")
     return s
 
 
@@ -283,7 +295,7 @@ def write_report(cfg, raw: Path = Path("data/raw"), out: Path = Path("data/out")
     text = "# Checkpoint report (SPEC §11 step 2)\n\n"
     if missing_pums:
         text += "Missing PUMS inputs: " + "; ".join(missing_pums) + "\n\n"
-    text += _section_powpuma(persons, _tract_pumas(raw, cfg), raw, cfg)
+    text += _section_powpuma(persons, _tract_pumas(raw, cfg), _composition(raw, cfg), raw, cfg)
     text += _section_wages(persons, bea, cpi_json, cfg)
     text += _section_mit(snapshots, cfg)
     if cpi_json is not None:

@@ -4,7 +4,13 @@ version = "0.1.0"
 description = "Orleans Parish living-wage gap and capacity analysis (place of work)"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["httpx", "polars", "duckdb", "pyyaml"]
+dependencies = [
+    "httpx",
+    "polars",
+    "duckdb",
+    "pyyaml",
+    "fastexcel>=0.21.0",
+]
 
 [project.scripts]
 nola-lw = "nola_lw.cli:main"

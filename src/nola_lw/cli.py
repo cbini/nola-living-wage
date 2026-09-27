@@ -20,9 +20,10 @@ def fetch(cfg, only: str | None, refresh_mit: bool) -> None:
                 print("bea:", *bea.fetch_zips(cfg))
                 print("bea:", bea_api.fetch_fixed_assets(cfg))
             elif src == "pums":
-                from nola_lw.fetch import pums
+                from nola_lw.fetch import ipums, pums
                 print("pums:", *pums.fetch_bulk(cfg))
                 print("pums:", pums.fetch_other_states(cfg))
+                print("pums:", ipums.fetch_composition(cfg))
         except Exception as e:
             print(f"{src}: FAILED - {e}")
             failed.append(src)
