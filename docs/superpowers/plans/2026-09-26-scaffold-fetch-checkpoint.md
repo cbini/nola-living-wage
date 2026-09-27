@@ -23,7 +23,7 @@
 
 ## Review Focus
 
-1. **BEA suppression flags.** `(D)`, `(NA)` and `(NM)` must parse as null with the flag kept, never as 0. Covered by a test in Task 5.
+1. **BEA suppression flags.** The API returns suppressed cells as `DataValue` "0" plus `NoteRef` "(D)"; `(NA)`/`(NM)` may also appear. Any cell with a flag in `NoteRef` must parse as null with the flag kept, never as 0. Covered by a test in Task 5.
 2. **API keys written to disk.** URL keys are removed in the manifest, and BEA's echoed `USERID` is removed from saved responses. Covered by tests in Tasks 2 and 5.
 3. **MIT page layout changes.** The scraper must fail loudly if it doesn't find exactly 12 "Living Wage" values under the expected household headers, rather than assigning columns silently. Covered by a test in Task 3.
 4. **Missing CPI target month.** If December 2025 isn't in the BLS series, raise an error; never fall back silently to another month. Covered by a test in Task 4.
@@ -37,6 +37,7 @@
 - The 2020–2024 data dictionary (`PUMS_Data_Dictionary_2020-2024.csv`) has **one** `POWPUMA` field ("based on 2020 Census definitions") and one `NAICSP` field ("based on 2022 NAICS"). There is no 2010-vintage PUMA field.
 - In `psam_p22.csv` with `POWSP == "022"`, POWPUMA `02400` carries 213,363 weighted workers. The tract-to-PUMA file puts residence PUMAs 02401–02403 wholly in parish 071 (Orleans). Candidate: Orleans = POWPUMA `02400`. The checkpoint confirms this.
 - Survey-year record counts in the LA person file: 2020: 31,513; 2021: 43,663; 2022–24: about 45k each.
+- **BEA, checked live on 2026-09-27:** the table names above exist. CAINC5N line 50 and CAINC6N line 5 are identical (2020: 11,644,740; 2024: 14,206,017, in thousands). Orleans CAGDP2 has no zero or suppressed cells for 2019–2024. CAINC6N has 133 zero cells for 2020–24, mostly at the subsector level. Data were last updated 2026-02-05.
 - The BLS v1 API works without a key: `CUUR0300SA0` returns monthly data through 2026-08.
 - **Proxy credentials (tested 2026-09-27).** A BEA `POST` with no `UserID` succeeds, because the proxy injects it into the body. A `GET` returns `injection failed`. The Census API rejects `POST` with a 405, so it can't use a proxy credential. Hence all PUMS data comes from the bulk files.
 
@@ -77,7 +78,7 @@ tests/test_*.py
   - `mit: {county_path: "counties/22071", metro_path: "metros/35380", methodology_path: "pages/methodology", base_url: "https://livingwage.mit.edu", floor_type: "a1_w1_c0", hours_full_time: 2080}`
   - `cpi: {series: "CUUR0300SA0", base_year: 2024, target: "2025-12"}`
   - `pums: {bulk_base: "https://www2.census.gov/programs-surveys/acs/data/pums/2024/5-Year", bulk_states: ["la", "ms"], other_states: [the 49 other postal codes (48 states + DC), lower-case], dictionary_url: ".../PUMS_Data_Dictionary_2020-2024.csv"}`
-  - `bea: {county_geo: "22071", state_geo: "22000", county_tables: [CAGDP2, CAINC5N, CAINC6N, CAINC1], state_tables: [SAGDP2, SAGDP3, SAGDP4, SAINC1, SAPCE1]}`. Use SAGDP3 for taxes and SAGDP4 for compensation; `fetch_line_codes` confirms the exact state table names before use.
+  - `bea: {county_geo: "22071", state_geo: "22000", county_tables: [CAGDP2, CAINC5N, CAINC6N, CAINC1], state_tables: [SAGDP2, SAGDP3, SAGDP4, SAGDP7, SAINC1, SAPCE1], max_per_minute: 60, wages_line: {table: CAINC5N, line: "50"}, wages_crosscheck: {table: CAINC6N, line: "5"}}`. Table names were confirmed live on 2026-09-27. SAGDP3 is taxes less subsidies, SAGDP7 is GOS (used for validation).
   - `universe: {cow_wage: ["1", "2", "3", "4", "5"], cow_public: ["3", "4", "5"], cow_self: ["6", "7"], cow_unpaid: ["8"], wage_min: 2, wage_max: 500}`
   - `decisions:` one key for each item in SPEC §12 a–f, with a string value (for example `household_unit: family_with_subfamilies`, `thresholds: orleans`, `sensitivity_thresholds: metro`, `gos_test: both`, `out_of_state: all_state_api`, `passthrough_bases: [resident_pce, gdp]`, `passthrough_p: [0, 0.5, 1]`, `headline_years: pool`, `alongside_years: subset`)
   - `checkpoint: {wage_tolerance: 0.15}`, `moe_z: 1.645`
@@ -148,15 +149,16 @@ tests/test_*.py
 - Produces: `fetch_line_codes(table: str) -> list[str]`, which calls `GetParameterValuesFiltered` with `TargetParameter=LineCode`.
 - `fetch_table(table: str, geo: str, years: list[int]) -> Path`, one `GetData` **POST** per line code (`datasetname=Regional`, `ResultFormat=json`; `UserID` only if `BEA_API_KEY` is set), saved to `data/raw/bea/{table}_{geo}_{line}.json` after `scrub_userid`. `scrub_userid(body: bytes) -> bytes` removes the `USERID` entry from `BEAAPI.Request.RequestParam`. An `Error` object in the response raises `RuntimeError` with BEA's message.
 - `parse_bea(paths: list[Path]) -> pl.DataFrame`, with the columns `table, line_code, line_desc, geo, year:int, value:float|null, flag:str|null`. It removes thousands separators and multiplies by `UNIT_MULT` when present.
-- `fetch_all(cfg)` covers the county and state tables from config for the years in `years.pool`.
+- `fetch_all(cfg)` covers the county and state tables from config for the years in `years.pool`, throttled to `bea.max_per_minute` (config: 60; the BEA limit is 100 per minute, and exceeding it means a 1-hour lockout). Already-fetched files are skipped, so a rerun after an interruption resumes.
 
 - [ ] **Step 1: Write the failing tests:**
-  - `test_parse_suppressed`: `DataValue "(D)"` gives `value is None` and `flag == "(D)"`, never 0.
+  - `test_parse_suppressed`: `{"DataValue": "0", "NoteRef": "(D)"}` gives `value is None` and `flag == "(D)"`. This is the real API shape, checked 2026-09-27. A `DataValue "(D)"` string gives the same result.
   - `test_parse_numbers`: `"1,234,567"` gives 1234567.0.
   - `test_parse_na`: `"(NA)"` gives null with the flag kept.
   - `test_scrub_userid`: a response whose RequestParam includes `USERID` comes back without it, and the other params are kept.
   - `test_fetch_uses_post_without_key`: with `BEA_API_KEY` unset, the MockTransport sees `POST` and no `UserID` in the body.
-  - `test_bea_error_raises`: `{"BEAAPI":{"Error":{...}}}` raises `RuntimeError` with its message.
+  - `test_bea_error_raises`: an `Error` object, either at `BEAAPI.Error` or at `BEAAPI.Results.Error` (the rate-limit error arrives as `APIErrorCode` "7"), raises `RuntimeError` with its message and is never recorded as data.
+  - `test_throttle`: with a fake clock, 150 calls never exceed `bea.max_per_minute` (config, 60) within any 60-second window.
 - [ ] **Step 2:** Run them; they fail.
 - [ ] **Step 3:** Implement.
 - [ ] **Step 4:** Run the tests; they pass. Run `uv run nola-lw fetch --only bea` live through the proxy; the files appear, with no `USERID` in any file (`grep -ri userid data/raw/bea` is empty).
@@ -190,8 +192,8 @@ tests/test_*.py
 - Produces: `replicate_se(full: float, reps: Sequence[float]) -> float`, which computes `sqrt(4/80 * Σ(rep − full)²)` and requires `len(reps) == 80`. Also `moe90(se: float, z: float) -> float`, which returns `z * se`, with `z` taken from `cfg["moe_z"]`.
 - `weighted_total(df, value_col, weight_prefix="PWGTP") -> tuple[float, float]` returns the estimate and its SE, using the full and 80 replicate weights.
 - `powpuma_by_year(df) -> pl.DataFrame` gives the weighted count by survey year (`SERIALNO[:4]`) and `POWPUMA` for `POWSP == orleans.powsp`.
-- `wage_check(persons, bea_wages_2024usd) -> dict` returns `survey, survey_moe, bea, pct_diff, flag` for the universe `COW` ∈ `cow_wage`, `WAGP > 0` and Orleans POWPUMA. The survey figure is `Σ PWGTP·WAGP·ADJINC/1e6`, which is an average-year figure in 2024 dollars. The BEA figure is the 2020–24 mean of the CAINC5N wages-and-salaries line, selected by its description from `fetch_line_codes`, not by a hardcoded number, with each year converted to 2024 dollars by CPI-U South annual averages. `flag = abs(pct_diff) > wage_tolerance`.
-- `suppressed_gdp(cagdp2: pl.DataFrame) -> dict` gives, per year, the all-industry total, the sum of disclosed top-level sectors, and the residual = total − disclosed (the GDP in "(D)" cells) and its share.
+- `wage_check(persons, bea_wages_2024usd) -> dict` returns `survey, survey_moe, bea, pct_diff, flag` for the universe `COW` ∈ `cow_wage`, `WAGP > 0` and Orleans POWPUMA. The survey figure is `Σ PWGTP·WAGP·ADJINC/1e6`, which is an average-year figure in 2024 dollars. The BEA figure is the 2020–24 mean of `bea.wages_line` (CAINC5N line 50, which equals CAINC6N line 5; checked live), with each year converted to 2024 dollars by CPI-U South annual averages. `flag = abs(pct_diff) > wage_tolerance`.
+- `suppressed_gdp(cagdp2: pl.DataFrame) -> dict` reads suppression from the `flag` column, never from zeros, and gives, per year, the all-industry total, the sum of disclosed top-level sectors, and the residual = total − disclosed (the GDP in "(D)" cells) and its share.
 - `write_report(cfg) -> Path` writes `data/out/checkpoint.md` with the four user checkpoint items plus the `NAICSP` codes by survey year. Any item whose inputs are missing prints "BLOCKED: <missing input>" and never a guessed number.
 
 - [ ] **Step 1: Write the failing tests:**

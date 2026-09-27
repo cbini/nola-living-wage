@@ -25,7 +25,7 @@ GDP and compensation are counted where the work happens, so every worker measure
 | BEA CAINC5N | Wage and salary disbursements by industry, place of work | County × NAICS sector × year | BEA API. Used for the survey-vs-admin check (§8) and the §6 comparison |
 | BEA SAPCE | Personal consumption expenditures, by state of residence | State × year | BEA API. Used only for the §7 pass-through bound |
 | BEA CAINC1 / SAINC1 | Personal income, by place of residence | County / state × year | BEA API. Used only to allocate SAPCE to Orleans (§7) |
-| BEA SAGDP (state components) | Taxes on production and imports, compensation, and GOS by industry | State × industry × year | BEA API. Used only to model county GOS (§6) |
+| BEA SAGDP2/3/4/7 (state) | GDP; taxes on production and imports **less subsidies** (SAGDP3); compensation (SAGDP4); GOS (SAGDP7) by industry | State × industry × year | BEA API. Used to model county GOS (§6), with SAGDP7 used to validate the method |
 | BLS CPI-U, South urban (CUUR0300SA0) | Price deflator | Monthly/annual | BLS API or flat file |
 
 **Snapshot for reference (fetched 2026-09-26, MIT data updated 2026-02-15), hourly, Orleans Parish:**
@@ -81,10 +81,10 @@ Put the floor gap next to these parish totals for the matching year(s), all at p
 |---|---|---|
 | GDP | CAGDP2 | Upper bound on everything |
 | Employee compensation | CAINC6N | Includes benefits, not just wages |
-| Wage and salary disbursements | CAINC5N | Closest match to `WAGP` |
+| Wage and salary disbursements | CAINC5N line 50 (equal to CAINC6N line 5; checked 2026-09-27) | Closest match to `WAGP` |
 | **Gross operating surplus (modeled)** | GDP − compensation − estimated taxes | The pool a raise would come out of |
 
-**GOS model:** County GOS is not published. Estimate it by industry as county GDP − county compensation − (county GDP × the state ratio of taxes on production and imports to GDP for that industry). GOS includes depreciation and proprietors' income, so it overstates distributable profit. Report it as an upper bound and also run a lower-bound variant that subtracts depreciation, using the national consumption-of-fixed-capital share by industry from the NIPA fixed-asset tables.
+**GOS model:** County GOS is not published. Estimate it by industry as county GDP − county compensation − (county GDP × the state ratio of taxes on production and imports **less subsidies** (SAGDP3) to GDP for that industry). Using the net figure keeps the accounting identity GDP = compensation + net taxes + GOS. **Validate the method on Louisiana:** applying the same formula to state data must reproduce SAGDP7 GOS by industry, within rounding. GOS includes depreciation and proprietors' income, so it overstates distributable profit. Report it as an upper bound and also run a lower-bound variant that subtracts depreciation, using the national consumption-of-fixed-capital share by industry from the NIPA fixed-asset tables.
 
 **Headline ratios, total and by industry:**
 - gap ÷ GDP
@@ -114,10 +114,11 @@ Run each as a parameter in one config file, never hand-edited in code:
 - **Place-of-work PUMA vintage.** The 2020–2024 file mixes survey years coded to 2010 PUMAs and 2020 PUMAs. Confirm how `POWPUMA` is coded across years and that Orleans Parish maps cleanly in both. If it doesn't, stop and report before building further.
 - **Industry crosswalk.** PUMS `NAICSP` codes are at mixed detail levels and BEA uses sector lines. BEA's county tables put **all** public employees on the "Government and government enterprises" line, whatever their activity. So the crosswalk key is (`COW`, `NAICSP`): `COW` 3–5 (local, state and federal) map to the government line, and everyone else maps by `NAICSP`. Nonprofits (`COW` 2) stay in their private industry, as they do in BEA. Build an explicit crosswalk table in the repo and test that every (`COW`, `NAICSP`) pair in the data maps to exactly one BEA line.
 - **Mixed NAICS vintages.** The 2024 5-year PUMS API labels `NAICSP` as "for 2023 and later based on 2022 NAICS", so earlier survey years in the pool may carry 2017-based codes. Check this at the checkpoint and make the crosswalk cover every code that appears in any year.
-- **Disclosure suppression.** BEA marks some county-industry cells "(D)". Carry them as unknown, not zero, and report how much GDP falls in suppressed cells.
+- **Disclosure suppression.** BEA marks some county-industry cells "(D)". Carry them as unknown, not zero, and report how much GDP falls in suppressed cells. **The API returns a suppressed cell as `DataValue` "0" with `NoteRef` "(D)"** (checked 2026-09-27), so the parser must read `NoteRef`. Orleans CAGDP2 has no suppressed sector cells for 2019–2024, but CAINC6N has zero-valued cells at the subsector level, some of them suppressed.
 - **Tips and cash income** are in `WAGP` only as reported. Note the likely undercount for hospitality.
 - **Survey vs. administrative totals.** Sum weighted `WAGP` for the universe and compare with CAINC5N wage disbursements. A large mismatch (say beyond ±15%) needs explaining before any ratio is published.
 - **Source consistency (QA log only).** Log Mississippi and other-state residents' counts, weighted wages and gap separately in `data/out/qa.md`, as a plausibility check on the out-of-state pulls. This split is not reported in `results.md`, because it says nothing about employer pay and the other-state group is likely too small for meaningful MOEs.
+- **BEA API limits.** At most 100 requests, 100 MB and 30 errors per minute. Exceeding any of these locks the key out for 1 hour. The fetcher throttles, and treats any `Error` in a response as fatal, never as missing data.
 - **POWPUMA labels in the API.** The 2024 5-year API exposes only `POWPUMA` "based on 2020 Census definitions", with no 2010-vintage field. Check at the checkpoint whether the bulk file carries separate 2010 and 2020 fields, or whether Census has recoded all years to 2020 definitions.
 
 ## 9. Repo layout
