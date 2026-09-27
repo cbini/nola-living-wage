@@ -201,8 +201,8 @@ def capacity_table(gap_by_line: pl.DataFrame, panel_mean: pl.DataFrame, gov_line
     def _status(gos_col: str) -> pl.Expr:
         return (pl.when(pl.col("line") == gov_line).then(pl.lit("n/a"))
                   .when(pl.col("gap").is_null()).then(pl.lit("no sample"))
-                  .when(pl.col("gap") == 0).then(pl.lit("pass"))  # nothing to fund, whatever the GOS
                   .when(pl.col(gos_col).is_null()).then(pl.lit("suppressed"))
+                  .when(pl.col("gap") == 0).then(pl.lit("pass"))  # nothing to fund, whatever the GOS
                   .when(pl.col("gap") <= pl.col(gos_col)).then(pl.lit("pass"))
                   .otherwise(pl.lit("fail")))
     return df.with_columns(self_funding=_status("gos"), self_funding_low=_status("gos_low"))

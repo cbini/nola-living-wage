@@ -277,6 +277,16 @@ def test_zero_gap_passes_both_bounds():
     assert (row["self_funding"], row["self_funding_low"]) == ("pass", "pass")
 
 
+def test_zero_gap_with_suppressed_gos_stays_suppressed():
+    """Suppressed is unknown, never a pass, even when the survey gap is zero."""
+    panel_mean = pl.DataFrame({"line": ["6"], "gdp": [500.0], "comp": [None], "tax_ratio": [0.0],
+                               "cfc_share": [0.5], "gos": [None], "gos_low": [None], "wages": [None]},
+                              schema=PANEL_SCHEMA)
+    gap_by_line = pl.DataFrame({"line": ["6"], "gap": [0.0], "gap_se": [0.0]})
+    row = capacity.capacity_table(gap_by_line, panel_mean, "83").row(0, named=True)
+    assert (row["self_funding"], row["self_funding_low"]) == ("suppressed", "suppressed")
+
+
 def test_gos_tests_ex_imputed_rent_line():
     """Ex-real-estate tests drop the line's gap from the numerator and its GOS from the denominator."""
     cfg = {"crosswalk": {"gov_line": "83"}, "capacity": {"imputed_rent_line": "56"},
