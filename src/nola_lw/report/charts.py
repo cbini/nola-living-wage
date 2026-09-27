@@ -1,4 +1,5 @@
 """SPEC §10.3: gap vs. GOS by industry (bar), and the hourly wage distribution with the floor marked."""
+import math
 import textwrap
 from datetime import datetime
 from pathlib import Path
@@ -36,6 +37,12 @@ def _style(ax) -> None:
     ax.set_axisbelow(True)
 
 
+def ratio_axis_max(capacity: pl.DataFrame) -> float:
+    """x-axis limit (%) for gap_vs_gos: past the 100% fail line and past every bar, so none is clipped."""
+    top = max((v for c in ("gap_gos", "gap_gos_low") for v in capacity[c] if v is not None), default=0.0)
+    return max(105.0, 105.0 * top)
+
+
 def gap_vs_gos(capacity: pl.DataFrame, labels: dict[str, str], cfg, out: Path = OUT) -> Path:
     """Horizontal bars: each industry's gap as % of its modeled GOS, upper and lower bound. A bar
     past 100% fails self-funding. Industries failing on GOS ≤ 0 sit on top, suppressed ones at the
@@ -64,7 +71,7 @@ def gap_vs_gos(capacity: pl.DataFrame, labels: dict[str, str], cfg, out: Path = 
     ax.axvline(100, color=INK, linewidth=1)
     ax.text(99, df.height - 0.5, "gap = GOS: fails beyond ", fontsize=8, color=INK, va="bottom", ha="right")
     ax.set_yticks(list(y), df["label"].to_list(), fontsize=8, color=INK)
-    ax.set_xlim(0, 105)
+    ax.set_xlim(0, ratio_axis_max(df))
     ax.set_xlabel("Floor gap as % of the industry's modeled gross operating surplus (GOS)", color=INK2)
     ax.legend(loc="lower right", frameon=False, fontsize=8, labelcolor=INK2)
     fig.suptitle(f"Floor gap vs. modeled GOS, by industry ({_years(cfg)} average)", x=0.01, ha="left", color=INK)
@@ -83,16 +90,19 @@ def wage_distribution(u: pl.DataFrame, floor: float, cfg, out: Path = OUT) -> Pa
     cum = s["PWGTP"].cum_sum() / s["PWGTP"].sum()
     xmax = s.filter(cum >= r["hist_max_quantile"])["wage_hr"][0]
     shown = s.filter(pl.col("wage_hr") <= xmax)
-    bins = [b * r["hist_bin_usd"] for b in range(int(xmax // r["hist_bin_usd"]) + 2)]
+    bw = r["hist_bin_usd"]
+    start = floor - math.ceil(floor / bw) * bw  # edges anchored at the floor: no bin mixes below and above
+    bins = [start + k * bw for k in range(math.ceil((xmax - start) / bw) + 2)]
     fig, ax = plt.subplots(figsize=(10, 4.5), facecolor=SURFACE)
     _style(ax)
     ax.grid(axis="x", visible=False)
     ax.grid(axis="y", color=GRID, linewidth=0.8)
     ax.hist(shown["wage_hr"], bins=bins, weights=shown["PWGTP"], color=SERIES[0], rwidth=0.85)
     ax.axvline(floor, color=INK, linewidth=1.2)
+    ax.set_ylim(0, ax.get_ylim()[1] * 1.08)  # headroom so the floor label clears the bars
     ax.text(floor, ax.get_ylim()[1] * 0.97, f"floor ${floor:.2f}/hr  ", color=INK, va="top", ha="right", fontsize=9)
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
-    ax.set_xlabel(f"Hourly wage ({price_month(cfg)} dollars), ${r['hist_bin_usd']} bins; "
+    ax.set_xlabel(f"Hourly wage ({price_month(cfg)} dollars), ${r['hist_bin_usd']} bins with an edge at the floor; "
                   f"top {1 - r['hist_max_quantile']:.0%} of workers (above ${xmax:.0f}) not shown", color=INK2)
     ax.set_ylabel("Workers (average year)", color=INK2)
     ax.set_title(f"Hourly wages of people who work in Orleans Parish ({_years(cfg)})", loc="left", color=INK)

@@ -97,8 +97,8 @@ def headline(ctx: dict) -> tuple[str, list[str]]:
     notes: list[str] = []
 
     text = (f"In {_years(p)} (an average year), {f.n(*ps['below'])} of the {f.n(*ps['workers'])} wage and salary "
-            f"workers whose job is in Orleans Parish ({f.pct(*ps['share_below'])}) earned less than the MIT living wage "
-            f"for one adult with no children, ${ctx['floor']:.2f} an hour in {charts.price_month(cfg)} dollars. "
+            f"workers whose job is in Orleans Parish ({f.pct(*ps['share_below'])}) earned less than the MIT living-wage "
+            f"floor ({_household_label(cfg['mit']['floor_type'])}), ${ctx['floor']:.2f} an hour in {charts.price_month(cfg)} dollars. "
             f"Raising each of them to that floor for the hours they actually work would cost {f.usd(*ps['total_gap'])} "
             f"a year. That is {f.pct(tot['gap_gdp'], tot['gap_gdp_se'])} of Orleans GDP, "
             f"{f.pct(tot['gap_comp'], tot['gap_comp_se'])} of employee compensation and "
@@ -170,10 +170,11 @@ def headline(ctx: dict) -> tuple[str, list[str]]:
 
     sens = ctx["sensitivities"]
     hr, hl = _row(sens, "sensitivity", "hours_rule"), _row(sens, "sensitivity", "headline")
-    beyond = abs(hr["total_gap"] - hl["total_gap"]) > z * hl["total_gap_se"]
+    diff, moe = hr["total_gap"] - hl["total_gap"], z * hl["total_gap_se"]
     text += (f"Measured instead as annual earnings against the floor × {cfg['mit']['hours_full_time']:,} hours, the gap is "
-             f"{f.usd(hr['total_gap'], hr['total_gap_se'])}"
-             + (", well beyond the headline MOE." if beyond else ", within the headline MOE."))
+             f"{f.usd(hr['total_gap'], hr['total_gap_se'])}, {f.usd(abs(diff))} {'above' if diff > 0 else 'below'} "
+             f"the headline: " + (f"{abs(diff) / moe:.1f} times the headline's MOE." if abs(diff) > moe
+                                  else "within the headline's MOE."))
     return text, notes
 
 
@@ -259,11 +260,12 @@ def _tables(ctx: dict) -> str:
         a, b = _row(p["capacity"], "line", line), _row(s["capacity"], "line", line)
         ind = _row(p["by_industry"], "bea_line", line)
         gap_s = f.usd(b["gap"], b["gap_se"]) if b["gap"] is not None else "no sample"
+
+        def cell(c, denom):
+            return "no sample" if a["gap"] is None else rat(a, c) if a[denom] is not None else "suppressed"
         rows.append([label, f.n(ind["below"], ind["below_se"]) if ind else "no sample",
                      f.usd(a["gap"], a["gap_se"]) if a["gap"] is not None else "no sample", gap_s,
-                     rat(a, "gap_comp") if a["comp"] is not None else "suppressed",
-                     rat(a, "gap_gos") if a["gos"] is not None else "suppressed",
-                     rat(a, "gap_gos_low") if a["gos_low"] is not None else "suppressed",
+                     cell("gap_comp", "comp"), cell("gap_gos", "gos"), cell("gap_gos_low", "gos_low"),
                      f"{a['self_funding']} / {a['self_funding_low']}",
                      f"{b['self_funding']} / {b['self_funding_low']}"])
     out.append(_table(["Industry (CAGDP2)", f"Below {yp}", f"Gap {yp}", f"Gap {ys}", f"Gap ÷ comp {yp}",
@@ -322,12 +324,12 @@ def _tables(ctx: dict) -> str:
 
 
 def _caveats(ctx: dict) -> str:
-    cfg = ctx["cfg"]
+    cfg, sb = ctx["cfg"], ctx["survey_bea"]
     return (
         "\n## Caveats\n\n"
         "- **Place of work.** Every worker measure counts jobs located in Orleans Parish, wherever the worker lives, "
-        "to match BEA's place-of-work GDP and compensation. Residence enters only the leakage table and the "
-        "price pass-through allocator.\n"
+        "to match BEA's place-of-work GDP and compensation. Residence enters only the leakage table, the "
+        "Louisiana-residents-only sensitivity and the price pass-through allocator.\n"
         f"- **Full-time basis.** MIT thresholds assume {cfg['mit']['hours_full_time']:,} hours a year. The headline "
         "counts actual hours, so a part-time worker above the hourly floor can still fall far short in annual income; "
         "the hours-rule sensitivity (table 7; its effect is stated in the headline) and the annual household "
@@ -337,10 +339,13 @@ def _caveats(ctx: dict) -> str:
         "- **GOS is modeled**, not published for counties: county GDP − compensation − GDP × Louisiana's net-tax "
         "ratio for the industry. The upper bound includes depreciation and proprietors' income, so it overstates "
         "distributable profit; the lower bound subtracts the national depreciation share by industry.\n"
-        "- **Survey vs. BEA.** Survey wages run below BEA wage disbursements (headline); if the survey under-reports "
-        "pay, the gap is overstated. BEA also counts pay the survey universe misses (see checkpoint.md).\n"
+        + (f"- **Survey vs. BEA.** Survey wages run {abs(sb['pct']):.1%} below BEA wage disbursements; if the survey "
+           "under-reports pay, the gap is overstated." if sb["pct"] < 0 else
+           f"- **Survey vs. BEA.** Survey wages run {sb['pct']:.1%} above BEA wage disbursements, so survey "
+           "under-reporting is not evident in the total.")
+        + " BEA also counts pay the survey universe misses (see checkpoint.md).\n"
         f"- **Dollars.** Wages and BEA values are in {charts.price_month(cfg)} dollars (MIT's price basis), converted by "
-        f"CPI-U South ({cfg['cpi']['series']}); BEA values year by year before averaging.\n"
+        f"CPI series {cfg['cpi']['series']}; BEA values year by year before averaging.\n"
         "- **MOEs** are 90% (replicate weights, successive-difference formula). Ratios' MOEs reflect survey error "
         "in the gap only; BEA totals are treated as fixed.\n"
     )
@@ -424,8 +429,8 @@ def qa_md(ctx: dict) -> str:
     s += (f"## Crosswalk coverage\n\n{c['pairs_in_data']:,} distinct (COW, NAICSP) pairs in the universe (outliers "
           f"included), all mapped to exactly one BEA line ({c['crosswalk_rows']:,} crosswalk rows; `apply_crosswalk` "
           "raises on any missing or duplicate pair).\n\n")
-    s += (f"## GOS method validation\n\nLouisiana: max |SAGDP2 − SAGDP4 − SAGDP3 − SAGDP7| over line 1 and the 20 "
-          f"industry lines, {_years(ctx['windows']['pool'])}: ${q['gos_resid']:,.0f} (tolerance "
+    s += (f"## GOS method validation\n\nLouisiana: max |SAGDP2 − SAGDP4 − SAGDP3 − SAGDP7| over line 1 and the "
+          f"{len(ctx['labels'])} industry lines, {_years(ctx['windows']['pool'])}: ${q['gos_resid']:,.0f} (tolerance "
           f"${cfg['capacity']['gos_validation_tol_usd']:,.0f}).\n\n")
     sup = q["suppressed"]
     s += "## Industry-years with suppressed BEA cells\n\n"
