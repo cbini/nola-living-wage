@@ -6,20 +6,27 @@ SOURCES = ["mit", "bls", "bea", "pums"]
 
 
 def fetch(cfg, only: str | None, refresh_mit: bool) -> None:
+    failed = []
     for src in [only] if only else SOURCES:
-        if src == "mit":
-            from nola_lw.fetch import mit
-            print("mit:", mit.scrape(cfg, refresh=refresh_mit))
-        elif src == "bls":
-            from nola_lw.fetch import bls
-            print("bls:", bls.fetch_cpi(cfg))
-        elif src == "bea":
-            from nola_lw.fetch import bea
-            print("bea:", *bea.fetch_zips(cfg))
-        elif src == "pums":
-            from nola_lw.fetch import pums
-            print("pums:", *pums.fetch_bulk(cfg))
-            print("pums:", pums.fetch_other_states(cfg))
+        try:
+            if src == "mit":
+                from nola_lw.fetch import mit
+                print("mit:", mit.scrape(cfg, refresh=refresh_mit))
+            elif src == "bls":
+                from nola_lw.fetch import bls
+                print("bls:", bls.fetch_cpi(cfg))
+            elif src == "bea":
+                from nola_lw.fetch import bea
+                print("bea:", *bea.fetch_zips(cfg))
+            elif src == "pums":
+                from nola_lw.fetch import pums
+                print("pums:", *pums.fetch_bulk(cfg))
+                print("pums:", pums.fetch_other_states(cfg))
+        except Exception as e:
+            print(f"{src}: FAILED - {e}")
+            failed.append(src)
+    if failed:
+        raise SystemExit(f"fetch failed for: {', '.join(failed)}")
 
 
 def main(argv: list[str] | None = None) -> None:

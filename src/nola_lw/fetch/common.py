@@ -43,16 +43,23 @@ def download(url: str, dest: Path, *, params: dict | None = None, client: httpx.
     tmp = dest.with_name(dest.name + ".part")
     own = client is None
     client = client or httpx.Client(timeout=300, follow_redirects=True)
+    ok = False
     try:
-        with client.stream("GET", url, params=params) as r:
-            r.raise_for_status()
-            full_url = str(r.request.url)
-            with tmp.open("wb") as f:
-                for chunk in r.iter_bytes():
-                    f.write(chunk)
+        try:
+            with client.stream("GET", url, params=params) as r:
+                r.raise_for_status()
+                full_url = str(r.request.url)
+                with tmp.open("wb") as f:
+                    for chunk in r.iter_bytes():
+                        f.write(chunk)
+            ok = True
+        except httpx.HTTPStatusError as e:
+            raise RuntimeError(f"GET {redact(url)} -> {e.response.status_code}") from None
     finally:
         if own:
             client.close()
+        if not ok and tmp.exists():
+            tmp.unlink()
     os.replace(tmp, dest)
     record(full_url, dest, manifest)
     return dest

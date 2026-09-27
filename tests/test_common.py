@@ -2,6 +2,7 @@ import csv
 import hashlib
 
 import httpx
+import pytest
 
 from nola_lw.fetch.common import download
 
@@ -40,3 +41,26 @@ def test_skip_when_unchanged(tmp_path):
     download("https://example.test/x.csv", dest, client=_client(calls), manifest=manifest)
     download("https://example.test/x.csv", dest, client=_client(calls), manifest=manifest)
     assert len(calls) == 1
+
+
+def _failing_client():
+    def handler(request):
+        return httpx.Response(500, content=b"boom")
+    return httpx.Client(transport=httpx.MockTransport(handler))
+
+
+def test_failed_download_leaves_no_part_file(tmp_path):
+    dest = tmp_path / "x.csv"
+    manifest = tmp_path / "manifest.csv"
+    with pytest.raises(RuntimeError):
+        download("https://example.test/x.csv", dest, client=_failing_client(), manifest=manifest)
+    assert not dest.exists()
+    assert not dest.with_name(dest.name + ".part").exists()
+
+
+def test_error_message_redacts_key(tmp_path):
+    manifest = tmp_path / "manifest.csv"
+    with pytest.raises(RuntimeError) as excinfo:
+        download("https://example.test/api", tmp_path / "a.json", params={"UserID": "SECRET"},
+                  client=_failing_client(), manifest=manifest)
+    assert "SECRET" not in str(excinfo.value)
