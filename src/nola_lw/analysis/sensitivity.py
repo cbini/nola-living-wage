@@ -52,11 +52,41 @@ def spending_bases(bea: pl.DataFrame, cpi_json: dict, cfg, years: list[int]) -> 
     return {"resident_pce": sum(pce_vals) / len(pce_vals), "gdp": sum(gdp_vals) / len(gdp_vals)}
 
 
-def _row(sensitivity: str, variant: str, summary: dict, factor: float) -> dict:
+def _row(sensitivity: str, variant: str, summary: dict, factor: float, loop_gain: float | None = None) -> dict:
     below_est, below_se = summary["below"]
     gap_est, gap_se = summary["total_gap"]
     return {"sensitivity": sensitivity, "variant": variant, "workers_below": below_est,
-            "workers_below_se": below_se, "total_gap": gap_est, "total_gap_se": gap_se, "factor": factor}
+            "workers_below_se": below_se, "total_gap": gap_est, "total_gap_se": gap_se, "factor": factor,
+            "loop_gain": loop_gain}
+
+
+def passthrough_rows(sensitivity: str, gap_at: Callable[[float], pl.DataFrame], bases: dict[str, float],
+                     ps: list[float], cfg) -> list[dict]:
+    """One row per (p, base): the fixed point f = 1 + p * cost(f) / base, where `gap_at(f)` gives the
+    universe with every threshold × f and cost is its gap × (1 + employer payroll tax rate).
+
+    loop_gain is the slope of that map at the fixed point, p * cost'(f) / base: the share of each round's
+    price rise that comes back in the next round (< 1 settles; >= 1 would not). The gap is piecewise linear
+    in f, so cost'(f) is exact: each worker below adds weight × hours × threshold, and their threshold is
+    (gap_hr + wage_hr) / f."""
+    load = 1 + cfg["capacity"]["employer_payroll_tax_rate"]
+    tol, max_iter = cfg["sensitivity"]["passthrough_tol"], cfg["sensitivity"]["passthrough_max_iter"]
+    rows = []
+    for p in ps:
+        for name, base in bases.items():
+            f = passthrough_factor(lambda f: floor_summary(gap_at(f))["total_gap"][0] * load, base, p, tol, max_iter)
+            u = gap_at(f)
+            slope = u.filter(pl.col("below")).select(
+                (pl.col("PWGTP") * pl.col("hours") * (pl.col("gap_hr") + pl.col("wage_hr")) / f).sum()).item()
+            rows.append(_row(sensitivity, f"p={p} base={name}", floor_summary(u), f, p * slope * load / base))
+    return rows
+
+
+def own_threshold_passthrough_rows(u: pl.DataFrame, cfg, bases: dict[str, float]) -> list[dict]:
+    """Q2 price pass-through: every Orleans household threshold × f. `u` as in own_threshold_rows."""
+    t = load_thresholds(cfg)
+    return passthrough_rows("own_threshold_passthrough", lambda f: add_own_gap(u, {k: v * f for k, v in t.items()}),
+                            bases, cfg["decisions"]["passthrough_p"], cfg)
 
 
 def own_threshold_rows(u: pl.DataFrame, cfg) -> list[dict]:
@@ -87,7 +117,6 @@ def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.Data
     """
     pool, subset = cfg["years"]["pool"], cfg["years"]["subset"]
     floor_type, hours_full_time = cfg["mit"]["floor_type"], cfg["mit"]["hours_full_time"]
-    sens = cfg["sensitivity"]
 
     floor = load_thresholds(cfg)[floor_type]
     headline_u = year_subset(u_typed.filter(~pl.col("outlier")), pool, pool)
@@ -96,14 +125,8 @@ def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.Data
 
     years = list(range(pool[0], pool[1] + 1))
     bases = spending_bases(bea_ctx["bea"], bea_ctx["cpi_json"], cfg, years)
-    for p in cfg["decisions"]["passthrough_p"]:
-        for base_name, base_val in bases.items():
-            def gap_at(f: float, floor: float = floor) -> float:  # employer cost, with its payroll taxes
-                return (floor_summary(add_floor_gap(headline_u, floor * f))["total_gap"][0]
-                        * (1 + cfg["capacity"]["employer_payroll_tax_rate"]))
-            factor = passthrough_factor(gap_at, base_val, p, sens["passthrough_tol"], sens["passthrough_max_iter"])
-            summary = floor_summary(add_floor_gap(headline_u, floor * factor))
-            rows.append(_row("passthrough", f"p={p} base={base_name}", summary, factor))
+    rows += passthrough_rows("passthrough", lambda f: add_floor_gap(headline_u, floor * f), bases,
+                             cfg["decisions"]["passthrough_p"], cfg)
 
     outliers_u = year_subset(u_typed, pool, pool)
     rows.append(_row("outliers_included", "outliers_included",
@@ -129,6 +152,7 @@ def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.Data
 
     if "household" in headline_u.columns:
         rows += own_threshold_rows(headline_u, cfg)
+        rows += own_threshold_passthrough_rows(headline_u, cfg, bases)
 
     if wage_scale:
         rows += scaled_rows(headline_u, floor, cfg, wage_scale)

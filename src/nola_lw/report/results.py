@@ -346,7 +346,9 @@ def _tables(ctx: dict) -> str:
                f"exceeds the headline's own 90% MOE on workers below or total gap; for years_2022_2024, the paired "
                f"window difference exceeds its own 90% MOE (as in the headline). The own_threshold rows answer Q2: "
                f"workers below their own household's living wage and the gap to it, with Orleans (county) and metro "
-               f"thresholds; the metro row is compared with the county row.\n\n")
+               f"thresholds; the metro row is compared with the county row. The own_threshold_passthrough rows apply the "
+               f"price pass-through to every household threshold and are compared with the county row. Loop gain is "
+               f"the share of each round of the price increase that comes back in the next round (below 1, it settles).\n\n")
     sens = ctx["sensitivities"]
     hl = _row(sens, "sensitivity", "headline")
     z = cfg["moe_z"]
@@ -354,14 +356,16 @@ def _tables(ctx: dict) -> str:
     rows = []
     own = {r["variant"]: r for r in sens.filter(pl.col("sensitivity") == "own_threshold").iter_rows(named=True)}
     for r in sens.iter_rows(named=True):
-        base = own.get("county") if r["sensitivity"] == "own_threshold" else hl  # Q2 rows vs. the Q2 result
+        base = own.get("county") if r["sensitivity"].startswith("own_threshold") else hl  # Q2 rows vs. the Q2 result
         beyond = (wd["below"][2] or wd["total_gap"][2] if r["sensitivity"] == "years_2022_2024" else
-                  r["variant"] != "county"
+                  not (r["sensitivity"] == "own_threshold" and r["variant"] == "county")
                   and (abs(r["workers_below"] - base["workers_below"]) > z * base["workers_below_se"]
                        or abs(r["total_gap"] - base["total_gap"]) > z * base["total_gap_se"]))
         rows.append([r["sensitivity"], r["variant"], f"{r['factor']:.4f}", f.n(r["workers_below"], r["workers_below_se"]),
-                     f.usd(r["total_gap"], r["total_gap_se"]), "yes" if beyond else "no"])
-    out.append(_table(["Sensitivity", "Variant", "Threshold factor", "Workers below", "Total gap", "Beyond MOE"], rows))
+                     f.usd(r["total_gap"], r["total_gap_se"]),
+                     "—" if r.get("loop_gain") is None else f"{r['loop_gain']:.3f}", "yes" if beyond else "no"])
+    out.append(_table(["Sensitivity", "Variant", "Threshold factor", "Workers below", "Total gap", "Loop gain",
+                       "Beyond MOE"], rows))
     return "\n".join(out)
 
 

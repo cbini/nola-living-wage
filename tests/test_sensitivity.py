@@ -80,7 +80,7 @@ def test_sensitivity_rows_complete():
     out = sensitivity.run_sensitivities(u, bea_ctx, CFG, u_self=u)
     assert out.height == 13
     assert set(out.columns) == {"sensitivity", "variant", "workers_below", "workers_below_se",
-                                "total_gap", "total_gap_se", "factor"}
+                                "total_gap", "total_gap_se", "factor", "loop_gain"}
     names = out["sensitivity"].to_list()
     assert names.count("headline") == 1
     assert names.count("passthrough") == 6
@@ -101,6 +101,10 @@ def test_sensitivity_rows_complete():
     assert p0["factor"] == pytest.approx(1.0)
     assert p0["total_gap"] == pytest.approx(headline["total_gap"])
     assert p0["workers_below"] == pytest.approx(headline["workers_below"])
+    assert p0["loop_gain"] == pytest.approx(0.0)
+    assert headline["loop_gain"] is None
+    p1 = out.filter(pl.col("variant") == "p=1 base=gdp").row(0, named=True)
+    assert 0 < p1["loop_gain"] < 1
 
 
 def test_survey_scaled_to_bea_rows():
@@ -126,3 +130,29 @@ def test_own_threshold_rows_only_with_household_column():
     rows = sensitivity.own_threshold_rows(u, CFG)
     assert [r["variant"] for r in rows] == ["county", "metro"]
     assert all(r["sensitivity"] == "own_threshold" and r["workers_below"] > 0 for r in rows)
+
+
+def test_loop_gain_is_slope_of_the_fixed_point_map():
+    """One worker at $10 for 2,000 hours, weight 10, threshold $20: cost(f) = 10·2000·(20f − 10)·(1 + load),
+    so the map f -> 1 + p·cost(f)/base has slope p·10·2000·20·(1 + load)/base."""
+    load = CFG["capacity"]["employer_payroll_tax_rate"]
+    u = pl.DataFrame({"hours": [2000.0], "wage_hr": [10.0]} | _weighted(1, [10.0]))
+    rows = sensitivity.passthrough_rows("x", lambda f: sensitivity.add_floor_gap(u, 20.0 * f),
+                                        {"b": 1e7}, [0.5], CFG)
+    r = rows[0]
+    assert r["variant"] == "p=0.5 base=b"
+    assert r["loop_gain"] == pytest.approx(0.5 * 10 * 2000 * 20 * (1 + load) / 1e7)
+    f = r["factor"]
+    assert f == pytest.approx(1 + 0.5 * 10 * 2000 * (20 * f - 10) * (1 + load) / 1e7)
+
+
+def test_own_threshold_passthrough_rows_with_household_column():
+    years = list(range(2020, 2025))
+    n = len(years)
+    u = pl.DataFrame({"year": [str(y) for y in years], "residence": ["orleans"] * n, "outlier": [False] * n,
+                      "earnings": [36_000.0] * n, "hours": [2000.0] * n, "wage_hr": [18.0] * n,
+                      "household": ["a1_w1_c1"] * n} | _weighted(n, [10.0] * n))
+    rows = sensitivity.own_threshold_passthrough_rows(u, CFG, {"gdp": 1e9})
+    assert {r["sensitivity"] for r in rows} == {"own_threshold_passthrough"}
+    assert [r["variant"] for r in rows] == [f"p={p} base=gdp" for p in CFG["decisions"]["passthrough_p"]]
+    assert all(r["loop_gain"] is not None for r in rows)

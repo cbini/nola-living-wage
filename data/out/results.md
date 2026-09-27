@@ -143,28 +143,34 @@ Each worker against the Orleans MIT threshold for their own family unit. The ann
 
 ## 7. Sensitivities
 
-All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the change from the headline exceeds the headline's own 90% MOE on workers below or total gap; for years_2022_2024, the paired window difference exceeds its own 90% MOE (as in the headline). The own_threshold rows answer Q2: workers below their own household's living wage and the gap to it, with Orleans (county) and metro thresholds; the metro row is compared with the county row.
+All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the change from the headline exceeds the headline's own 90% MOE on workers below or total gap; for years_2022_2024, the paired window difference exceeds its own 90% MOE (as in the headline). The own_threshold rows answer Q2: workers below their own household's living wage and the gap to it, with Orleans (county) and metro thresholds; the metro row is compared with the county row. The own_threshold_passthrough rows apply the price pass-through to every household threshold and are compared with the county row. Loop gain is the share of each round of the price increase that comes back in the next round (below 1, it settles).
 
 
-| Sensitivity | Variant | Threshold factor | Workers below | Total gap | Beyond MOE |
-|---|---:|---:|---:|---:|---:|
-| headline | headline | 1.0000 | 72,897 ± 3,050 | $953.9M ± $53.8M | no |
-| passthrough | p=0 base=resident_pce | 1.0000 | 72,897 ± 3,050 | $953.9M ± $53.8M | no |
-| passthrough | p=0 base=gdp | 1.0000 | 72,897 ± 3,050 | $953.9M ± $53.8M | no |
-| passthrough | p=0.5 base=resident_pce | 1.0259 | 76,318 ± 3,112 | $1,026.2M ± $56.7M | yes |
-| passthrough | p=0.5 base=gdp | 1.0175 | 74,116 ± 3,106 | $1,002.1M ± $55.8M | no |
-| passthrough | p=1 base=resident_pce | 1.0564 | 79,056 ± 3,195 | $1,116.3M ± $60.2M | yes |
-| passthrough | p=1 base=gdp | 1.0368 | 77,547 ± 3,147 | $1,058.0M ± $57.9M | yes |
-| outliers_included | outliers_included | 1.0000 | 73,479 ± 3,014 | $974.9M ± $51.5M | no |
-| hours_rule | hours_rule | 1.0000 | 81,761 ± 3,144 | $1,639.3M ± $66.1M | yes |
-| la_residents_only | la_residents_only | 1.0000 | 71,471 ± 2,930 | $934.0M ± $53.1M | no |
-| years_2022_2024 | years_2022_2024 | 1.0000 | 75,843 ± 3,792 | $962.7M ± $63.3M | yes |
-| metro_thresholds | metro_thresholds | 1.0000 | 73,357 ± 3,077 | $981.1M ± $54.9M | no |
-| self_employed_included | self_employed_included | 1.0000 | 80,756 ± 2,883 | $1,078.9M ± $55.1M | yes |
-| own_threshold | county | 1.0000 | 76,673 ± 3,026 | $1,496.5M ± $86.6M | no |
-| own_threshold | metro | 1.0000 | 76,936 ± 3,037 | $1,519.3M ± $87.3M | no |
-| survey_scaled_to_bea | all | 1.0000 | 63,525 ± 2,849 | $771.1M ± $47.9M | yes |
-| survey_scaled_to_bea | like_for_like | 1.0000 | 68,951 ± 2,898 | $884.7M ± $51.6M | yes |
+| Sensitivity | Variant | Threshold factor | Workers below | Total gap | Loop gain | Beyond MOE |
+|---|---:|---:|---:|---:|---:|---:|
+| headline | headline | 1.0000 | 72,897 ± 3,050 | $953.9M ± $53.8M | — | no |
+| passthrough | p=0 base=resident_pce | 1.0000 | 72,897 ± 3,050 | $953.9M ± $53.8M | 0.000 | no |
+| passthrough | p=0 base=gdp | 1.0000 | 72,897 ± 3,050 | $953.9M ± $53.8M | 0.000 | no |
+| passthrough | p=0.5 base=resident_pce | 1.0259 | 76,318 ± 3,112 | $1,026.2M ± $56.7M | 0.073 | yes |
+| passthrough | p=0.5 base=gdp | 1.0175 | 74,116 ± 3,106 | $1,002.1M ± $55.8M | 0.049 | no |
+| passthrough | p=1 base=resident_pce | 1.0564 | 79,056 ± 3,195 | $1,116.3M ± $60.2M | 0.152 | yes |
+| passthrough | p=1 base=gdp | 1.0368 | 77,547 ± 3,147 | $1,058.0M ± $57.9M | 0.102 | yes |
+| outliers_included | outliers_included | 1.0000 | 73,479 ± 3,014 | $974.9M ± $51.5M | — | no |
+| hours_rule | hours_rule | 1.0000 | 81,761 ± 3,144 | $1,639.3M ± $66.1M | — | yes |
+| la_residents_only | la_residents_only | 1.0000 | 71,471 ± 2,930 | $934.0M ± $53.1M | — | no |
+| years_2022_2024 | years_2022_2024 | 1.0000 | 75,843 ± 3,792 | $962.7M ± $63.3M | — | yes |
+| metro_thresholds | metro_thresholds | 1.0000 | 73,357 ± 3,077 | $981.1M ± $54.9M | — | no |
+| self_employed_included | self_employed_included | 1.0000 | 80,756 ± 2,883 | $1,078.9M ± $55.1M | — | yes |
+| own_threshold | county | 1.0000 | 76,673 ± 3,026 | $1,496.5M ± $86.6M | — | no |
+| own_threshold | metro | 1.0000 | 76,936 ± 3,037 | $1,519.3M ± $87.3M | — | no |
+| own_threshold_passthrough | p=0 base=resident_pce | 1.0000 | 76,673 ± 3,026 | $1,496.5M ± $86.6M | 0.000 | no |
+| own_threshold_passthrough | p=0 base=gdp | 1.0000 | 76,673 ± 3,026 | $1,496.5M ± $86.6M | 0.000 | no |
+| own_threshold_passthrough | p=0.5 base=resident_pce | 1.0417 | 80,658 ± 3,099 | $1,651.5M ± $92.6M | 0.096 | yes |
+| own_threshold_passthrough | p=0.5 base=gdp | 1.0278 | 79,271 ± 3,067 | $1,599.0M ± $90.5M | 0.065 | yes |
+| own_threshold_passthrough | p=1 base=resident_pce | 1.0937 | 85,070 ± 3,048 | $1,853.8M ± $100.4M | 0.202 | yes |
+| own_threshold_passthrough | p=1 base=gdp | 1.0600 | 82,106 ± 3,023 | $1,721.4M ± $95.3M | 0.135 | yes |
+| survey_scaled_to_bea | all | 1.0000 | 63,525 ± 2,849 | $771.1M ± $47.9M | — | yes |
+| survey_scaled_to_bea | like_for_like | 1.0000 | 68,951 ± 2,898 | $884.7M ± $51.6M | — | yes |
 
 ## 8. Survey pay vs. employer-reported pay
 
