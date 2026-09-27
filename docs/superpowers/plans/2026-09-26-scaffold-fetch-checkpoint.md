@@ -18,13 +18,13 @@
 - `data/raw/` and `data/out/` are gitignored, except `results.md`, `qa.md`, `*.csv` and `*.png`. `data/snapshots/` and `crosswalks/` are committed.
 - MIT thresholds are scraped, never hardcoded. The committed dated snapshot is reused unless `--refresh-mit` is passed (§9).
 - PUMS codes (`POWSP`, `POWPUMA`, `PUMA`, `NAICSP`, `COW`, `SERIALNO`) are read as strings. Leading zeros matter (for example `POWSP` = `022`).
-- Keys come from the environment: `CENSUS_API_KEY`, `BEA_API_KEY`, `BLS_API_KEY`. A missing key fails only the fetch that needs it, with a message naming the variable.
+- **Keys.** No Census key is used, since all PUMS data comes from the bulk files. BLS works keyless, with `BLS_API_KEY` optional. BEA's key is held by the agent proxy as a Body-parameter API credential and is injected into the **POST body** for `apps.bea.gov`. So BEA requests are `POST`s with form-encoded parameters. When `BEA_API_KEY` is set (local runs), `UserID` is added to the body; otherwise it is left out and the proxy supplies it. BEA echoes `USERID` in every response, so remove it before saving. These keys are usage identifiers, not secrets, but they stay out of files anyway.
 - Commit after each task and push after each completed SPEC §11 step.
 
 ## Review Focus
 
 1. **BEA suppression flags.** `(D)`, `(NA)` and `(NM)` must parse as null with the flag kept, never as 0. Covered by a test in Task 5.
-2. **API keys leaking** into the manifest. Keys are removed from URLs before they are recorded. Covered by a test in Task 2.
+2. **API keys written to disk.** URL keys are removed in the manifest, and BEA's echoed `USERID` is removed from saved responses. Covered by tests in Tasks 2 and 5.
 3. **MIT page layout changes.** The scraper must fail loudly if it doesn't find exactly 12 "Living Wage" values under the expected household headers, rather than assigning columns silently. Covered by a test in Task 3.
 4. **Missing CPI target month.** If December 2025 isn't in the BLS series, raise an error; never fall back silently to another month. Covered by a test in Task 4.
 5. **Leading-zero codes.** `POWSP` and `POWPUMA` read as integers would drop leading zeros and match nothing. Covered by a test in Task 6.
@@ -38,21 +38,21 @@
 - In `psam_p22.csv` with `POWSP == "022"`, POWPUMA `02400` carries 213,363 weighted workers. The tract-to-PUMA file puts residence PUMAs 02401–02403 wholly in parish 071 (Orleans). Candidate: Orleans = POWPUMA `02400`. The checkpoint confirms this.
 - Survey-year record counts in the LA person file: 2020: 31,513; 2021: 43,663; 2022–24: about 45k each.
 - The BLS v1 API works without a key: `CUUR0300SA0` returns monthly data through 2026-08.
-- The Census API returns a 302 without a key, so the other-state pull needs `CENSUS_API_KEY`. BEA always needs `BEA_API_KEY`.
+- **Proxy credentials (tested 2026-09-27).** A BEA `POST` with no `UserID` succeeds, because the proxy injects it into the body. A `GET` returns `injection failed`. The Census API rejects `POST` with a 405, so it can't use a proxy credential. Hence all PUMS data comes from the bulk files.
 
 ## File Structure
 
 ```
 pyproject.toml                    # package + `nola-lw` script entry
 config.yaml                       # all constants (Task 1)
-.env.example                      # three key names, empty values
+.env.example                      # BEA_API_KEY, BLS_API_KEY (both optional locally), empty values
 src/nola_lw/__init__.py
 src/nola_lw/config.py             # load_config()
 src/nola_lw/cli.py                # argparse: fetch | checkpoint | all
 src/nola_lw/fetch/common.py       # download(), manifest, key redaction
 src/nola_lw/fetch/mit.py          # scrape + parse thresholds and price basis
 src/nola_lw/fetch/bls.py          # CPI series + cpi_factor()
-src/nola_lw/fetch/pums.py         # bulk LA/MS files + API other-state pull
+src/nola_lw/fetch/pums.py         # bulk LA/MS files + filtered other-state person files
 src/nola_lw/fetch/bea.py          # Regional tables, parse with suppression flags
 src/nola_lw/analysis/se.py        # replicate-weight SE / 90% MOE
 src/nola_lw/checkpoint.py         # checkpoint report
@@ -76,12 +76,12 @@ tests/test_*.py
   - `orleans: {state_fips: "22", county_fips: "071", powsp: "022", powpuma: ["02400"]}` (the checkpoint confirms these)
   - `mit: {county_path: "counties/22071", metro_path: "metros/35380", methodology_path: "pages/methodology", base_url: "https://livingwage.mit.edu", floor_type: "a1_w1_c0", hours_full_time: 2080}`
   - `cpi: {series: "CUUR0300SA0", base_year: 2024, target: "2025-12"}`
-  - `pums: {bulk_base: "https://www2.census.gov/programs-surveys/acs/data/pums/2024/5-Year", bulk_states: ["la", "ms"], api_base: "https://api.census.gov/data/2024/acs/acs5/pums", api_exclude_states: ["22", "28"], api_states: [all 50 states + DC as 2-digit FIPS], dictionary_url: ".../PUMS_Data_Dictionary_2020-2024.csv"}`
+  - `pums: {bulk_base: "https://www2.census.gov/programs-surveys/acs/data/pums/2024/5-Year", bulk_states: ["la", "ms"], other_states: [the 49 other postal codes (48 states + DC), lower-case], dictionary_url: ".../PUMS_Data_Dictionary_2020-2024.csv"}`
   - `bea: {county_geo: "22071", state_geo: "22000", county_tables: [CAGDP2, CAINC5N, CAINC6N, CAINC1], state_tables: [SAGDP2, SAGDP3, SAGDP4, SAINC1, SAPCE1]}`. Use SAGDP3 for taxes and SAGDP4 for compensation; `fetch_line_codes` confirms the exact state table names before use.
   - `universe: {cow_wage: ["1", "2", "3", "4", "5"], cow_public: ["3", "4", "5"], cow_self: ["6", "7"], cow_unpaid: ["8"], wage_min: 2, wage_max: 500}`
   - `decisions:` one key for each item in SPEC §12 a–f, with a string value (for example `household_unit: family_with_subfamilies`, `thresholds: orleans`, `sensitivity_thresholds: metro`, `gos_test: both`, `out_of_state: all_state_api`, `passthrough_bases: [resident_pce, gdp]`, `passthrough_p: [0, 0.5, 1]`, `headline_years: pool`, `alongside_years: subset`)
   - `checkpoint: {wage_tolerance: 0.15}`, `moe_z: 1.645`
-- [ ] **Step 3: Write the failing test** `tests/test_config.py::test_config_has_required_keys`: `cfg = load_config()`; assert `cfg["orleans"]["powsp"] == "022"`, `cfg["cpi"]["target"] == "2025-12"`, `cfg["checkpoint"]["wage_tolerance"] == 0.15`, `len(cfg["pums"]["api_states"]) == 51`, and that every value in `orleans` is a `str`.
+- [ ] **Step 3: Write the failing test** `tests/test_config.py::test_config_has_required_keys`: `cfg = load_config()`; assert `cfg["orleans"]["powsp"] == "022"`, `cfg["cpi"]["target"] == "2025-12"`, `cfg["checkpoint"]["wage_tolerance"] == 0.15`, `len(cfg["pums"]["other_states"]) == 49`, `"la" not in cfg["pums"]["other_states"]`, and that every value in `orleans` is a `str`.
 - [ ] **Step 4:** Implement `load_config` with `yaml.safe_load`, and a `main()` stub whose subcommands print "not implemented". Run `uv run pytest -q`; it passes.
 - [ ] **Step 5:** Create `.env.example` with the three key names and empty values. Replace the README's Reproduce section with `uv sync`, `cp .env.example .env` and `uv run nola-lw all`.
 - [ ] **Step 6:** Commit: `scaffold: package, config, CLI skeleton`.
@@ -92,13 +92,13 @@ tests/test_*.py
 
 **Interfaces:**
 - Produces: `download(url: str, dest: Path, *, params: dict | None = None, client: httpx.Client | None = None, force: bool = False) -> Path`. It appends one row to `data/raw/manifest.csv` with the columns `url, fetched_at_utc, sha256, bytes, path`. `redact(url: str) -> str` replaces the values of `key`, `UserID` and `registrationkey` with `REDACTED`. It skips a download when `dest` exists, `force` is false and its sha256 matches the manifest.
-- Also produces `require_env(name: str) -> str`, which raises `RuntimeError(f"{name} is not set; add it to the environment (see .env.example)")`.
+- Also produces `download_post(url: str, dest: Path, *, data: dict, scrub: Callable[[bytes], bytes] | None = None, ...) -> Path`, which POSTs form-encoded data, applies `scrub` to the body before hashing and writing, and records the manifest the same way.
 
 - [ ] **Step 1: Write the failing tests** using `httpx.MockTransport`:
   - `test_download_writes_manifest_row`: the sha256 in the manifest equals `hashlib.sha256(body).hexdigest()`, and `bytes` equals `len(body)`.
   - `test_manifest_redacts_keys`: `params={"key": "SECRET", "UserID": "SECRET2"}` puts no `SECRET` substring anywhere in the manifest file.
   - `test_skip_when_unchanged`: a second call with the same dest makes zero requests (the transport counts calls).
-  - `test_require_env_missing`: with `monkeypatch.delenv("BEA_API_KEY")`, `pytest.raises(RuntimeError, match="BEA_API_KEY")`.
+  - `test_download_post_scrubs`: a scrub function that removes `SECRET` means the file on disk and the manifest hash both reflect the scrubbed body.
 - [ ] **Step 2:** Run them; they fail on import.
 - [ ] **Step 3:** Implement with `httpx.Client(timeout=300, follow_redirects=True)`, and write through a temporary file then rename.
 - [ ] **Step 4:** Run the tests; they pass.
@@ -146,7 +146,7 @@ tests/test_*.py
 
 **Interfaces:**
 - Produces: `fetch_line_codes(table: str) -> list[str]`, which calls `GetParameterValuesFiltered` with `TargetParameter=LineCode`.
-- `fetch_table(table: str, geo: str, years: list[int]) -> Path`, one `GetData` call per line code (`datasetname=Regional`, `ResultFormat=json`), saved to `data/raw/bea/{table}_{geo}_{line}.json`.
+- `fetch_table(table: str, geo: str, years: list[int]) -> Path`, one `GetData` **POST** per line code (`datasetname=Regional`, `ResultFormat=json`; `UserID` only if `BEA_API_KEY` is set), saved to `data/raw/bea/{table}_{geo}_{line}.json` after `scrub_userid`. `scrub_userid(body: bytes) -> bytes` removes the `USERID` entry from `BEAAPI.Request.RequestParam`. An `Error` object in the response raises `RuntimeError` with BEA's message.
 - `parse_bea(paths: list[Path]) -> pl.DataFrame`, with the columns `table, line_code, line_desc, geo, year:int, value:float|null, flag:str|null`. It removes thousands separators and multiplies by `UNIT_MULT` when present.
 - `fetch_all(cfg)` covers the county and state tables from config for the years in `years.pool`.
 
@@ -154,30 +154,33 @@ tests/test_*.py
   - `test_parse_suppressed`: `DataValue "(D)"` gives `value is None` and `flag == "(D)"`, never 0.
   - `test_parse_numbers`: `"1,234,567"` gives 1234567.0.
   - `test_parse_na`: `"(NA)"` gives null with the flag kept.
-  - `test_fetch_needs_key`: `RuntimeError` matching `BEA_API_KEY` when it is unset.
+  - `test_scrub_userid`: a response whose RequestParam includes `USERID` comes back without it, and the other params are kept.
+  - `test_fetch_uses_post_without_key`: with `BEA_API_KEY` unset, the MockTransport sees `POST` and no `UserID` in the body.
+  - `test_bea_error_raises`: `{"BEAAPI":{"Error":{...}}}` raises `RuntimeError` with its message.
 - [ ] **Step 2:** Run them; they fail.
 - [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run the tests; they pass. **The live fetch is blocked until `BEA_API_KEY` is set**; record that in the task list.
+- [ ] **Step 4:** Run the tests; they pass. Run `uv run nola-lw fetch --only bea` live through the proxy; the files appear, with no `USERID` in any file (`grep -ri userid data/raw/bea` is empty).
 - [ ] **Step 5:** Commit: `fetch: BEA Regional tables with suppression flags`.
 
-### Task 6: PUMS fetchers (bulk LA/MS and API other states)
+### Task 6: PUMS fetchers (bulk files, all states)
 
-**Files:** Create `src/nola_lw/fetch/pums.py` and `tests/test_pums.py`, with the fixture `tests/fixtures/pums_tiny.csv` (about 10 rows, including `POWSP=022`, `POWPUMA=02400` and `NAICSP` values with letters).
+**Files:** Create `src/nola_lw/fetch/pums.py` and `tests/test_pums.py`, with the fixture `tests/fixtures/pums_tiny.csv`: about 10 rows over 3 households, one of which has a member with `POWSP=022`, `POWPUMA=02400`, and a letter in `NAICSP`.
 
 **Interfaces:**
-- Produces: `PERSON_VARS: list[str]` = `SERIALNO, SPORDER, PWGTP, WAGP, ADJINC, WKHP, WKWN, COW, NAICSP, POWSP, POWPUMA, ST, PUMA, AGEP, RELSHIPP, SFN, SFR`, plus `REP_VARS` = `PWGTP1..PWGTP80`.
-- `fetch_bulk(cfg) -> list[Path]` downloads the four zips and the data dictionary, then extracts them to `data/raw/pums/`.
+- Produces: `PERSON_VARS: list[str]` = `SERIALNO, SPORDER, PWGTP, WAGP, ADJINC, WKHP, WKWN, COW, NAICSP, POWSP, POWPUMA, ST, PUMA, AGEP, RELSHIPP, SFN, SFR, SEMP`, plus `REP_VARS` = `PWGTP1..PWGTP80`.
 - `read_persons(path: Path) -> pl.DataFrame` reads `PERSON_VARS + REP_VARS`, with every code column as `pl.Utf8`.
-- `fetch_api_other_states(cfg) -> Path` makes, per state, two requests: base vars, and the replicate weights with `SERIALNO,SPORDER`. The Census API allows at most 50 variables per request. Both use the predicate `POWSP=<cfg powsp>` and `for=state:XX`. The two requests are joined on `SERIALNO,SPORDER` and written to `data/raw/pums/api_other_states.parquet`. A state with zero rows is allowed, since the API returns 204 or an empty result.
+- `keep_la_worker_households(df: pl.DataFrame, powsp: str) -> pl.DataFrame` keeps every person whose `SERIALNO` has at least one member with `POWSP == powsp`.
+- `fetch_bulk(cfg) -> list[Path]` downloads the LA and MS person and household zips and the data dictionary, then extracts them to `data/raw/pums/`.
+- `fetch_other_states(cfg) -> Path`, for each postal code in `pums.other_states` in turn: download `csv_p{st}.zip`, stream-read it, apply `keep_la_worker_households`, append to `data/raw/pums/other_states.parquet`, and delete the zip and CSV. The manifest keeps each zip's row. On a rerun, skip any state already in the parquet.
 
 - [ ] **Step 1: Write the failing tests:**
-  - `test_read_keeps_leading_zeros`: `df["POWSP"][0] == "022"` and `df["POWPUMA"][0] == "02400"`.
-  - `test_api_splits_vars`: with a MockTransport, every request has 50 or fewer comma-separated names in `get`, and the join yields one row per person with 80 replicate columns.
-  - `test_api_needs_key`: `RuntimeError` matching `CENSUS_API_KEY`.
+  - `test_read_keeps_leading_zeros`: `df["POWSP"]` contains `"022"`, and `df["POWPUMA"]` contains `"02400"`.
+  - `test_keep_households`: from the fixture, all members of the household with the `022` worker are kept (including a child with null `POWSP`), and the other two households are dropped.
+  - `test_other_states_resumes`: with a fake downloader, a second run makes no requests for states already written.
 - [ ] **Step 2:** Run them; they fail.
-- [ ] **Step 3:** Implement. Check at runtime whether the API predicate value is `022` or `22` by requesting `variables/POWSP.json` once, and use whichever form appears in its values.
-- [ ] **Step 4:** Run the tests; they pass. Run `uv run nola-lw fetch --only pums-bulk` live; four zips and the dictionary appear in the manifest. **The API pull is blocked until `CENSUS_API_KEY` is set.**
-- [ ] **Step 5:** Commit, then push. This completes SPEC §11 step 1 except for the fetches blocked on keys.
+- [ ] **Step 3:** Implement. Use `pl.scan_csv(..., schema_overrides=...)` so a large state file isn't held in memory, and check free disk before each state.
+- [ ] **Step 4:** Run the tests; they pass. Run `uv run nola-lw fetch --only pums` live. The LA/MS files, the dictionary and 49 state zips appear in the manifest. `other_states.parquet` exists, and its weighted `POWSP=022` count is logged.
+- [ ] **Step 5:** Commit, then push. This completes SPEC §11 step 1.
 
 ### Task 7: Replicate-weight SE and checkpoint report
 
@@ -189,7 +192,7 @@ tests/test_*.py
 - `powpuma_by_year(df) -> pl.DataFrame` gives the weighted count by survey year (`SERIALNO[:4]`) and `POWPUMA` for `POWSP == orleans.powsp`.
 - `wage_check(persons, bea_wages_2024usd) -> dict` returns `survey, survey_moe, bea, pct_diff, flag` for the universe `COW` ∈ `cow_wage`, `WAGP > 0` and Orleans POWPUMA. The survey figure is `Σ PWGTP·WAGP·ADJINC/1e6`, which is an average-year figure in 2024 dollars. The BEA figure is the 2020–24 mean of the CAINC5N wages-and-salaries line, selected by its description from `fetch_line_codes`, not by a hardcoded number, with each year converted to 2024 dollars by CPI-U South annual averages. `flag = abs(pct_diff) > wage_tolerance`.
 - `suppressed_gdp(cagdp2: pl.DataFrame) -> dict` gives, per year, the all-industry total, the sum of disclosed top-level sectors, and the residual = total − disclosed (the GDP in "(D)" cells) and its share.
-- `write_report(cfg) -> Path` writes `data/out/checkpoint.md` with the four user checkpoint items plus the `NAICSP` codes by survey year. Any item whose inputs are missing, such as BEA without a key, prints "BLOCKED: <missing input>" and never a guessed number.
+- `write_report(cfg) -> Path` writes `data/out/checkpoint.md` with the four user checkpoint items plus the `NAICSP` codes by survey year. Any item whose inputs are missing prints "BLOCKED: <missing input>" and never a guessed number.
 
 - [ ] **Step 1: Write the failing tests:**
   - `test_se_formula`: with `full=100`, reps of 101 (40 of them) and 99 (40 of them), SE = sqrt(4/80·80·1) = 2.0.
@@ -197,7 +200,7 @@ tests/test_*.py
   - `test_weighted_total_adjinc`: two synthetic workers with ADJINC=1.05e6 give the hand-computed total.
   - `test_wage_check_flag`: a survey of 80 against a BEA figure of 100 gives `pct_diff == -0.20` and `flag is True`; a survey of 90 gives `flag is False`.
   - `test_suppressed_residual`: a total of 100, disclosed sectors 30 + 50 and one `(D)` sector give a residual of 20 and a share of 0.20.
-  - `test_report_marks_blocked`: with no BEA files present, the report contains "BLOCKED" and "BEA_API_KEY".
+  - `test_report_marks_blocked`: with no BEA files present, the report contains "BLOCKED" and "CAINC5N".
 - [ ] **Step 2:** Run them; they fail.
 - [ ] **Step 3:** Implement. Write `crosswalks/powpuma_orleans.csv` from the confirmed codes, with the columns `vintage,powsp,powpuma,county_fips,source`. Its source is the data-dictionary label plus the tract-to-PUMA file, and every row is hand-checked.
 - [ ] **Step 4:** Run the tests; they pass. Run `uv run nola-lw checkpoint` live and read `data/out/checkpoint.md`.
@@ -207,8 +210,8 @@ tests/test_*.py
 
 ## After the checkpoint (outline only; detailed in a follow-up plan)
 
-- **§11.3 Universe and wages:** `build/universe.py` combines LA and MS bulk records with the API records. It applies the filters, computes `wage_hr`, applies the CPI factor, flags outliers, counts self-employed workers, and tags residence as Orleans, other LA or out of state (`qa.md` gets the MS/other split).
+- **§11.3 Universe and wages:** `build/universe.py` combines the LA, MS and other-state bulk records. It applies the filters, computes `wage_hr`, applies the CPI factor, flags outliers, counts self-employed workers, and tags residence as Orleans, other LA or out of state (`qa.md` gets the MS/other split).
 - **§11.4 Floor gap:** `analysis/gaps.py` computes the gap, counts, shares and mean shortfall with MOEs, broken out by industry, class of worker and residence. Tests use synthetic workers, including the gap-math test.
-- **§11.5 Households:** `build/households.py` builds family units with subfamilies (SFN/SFR), caps children at 3, counts working adults, and produces the 12-cell table plus the untyped row and the annual version.
+- **§11.5 Households:** `build/households.py` builds family units with subfamilies (SFN/SFR), caps children at 3, counts working adults, and produces the 12-cell table and the annual version.
 - **§11.6 Capacity:** `crosswalks/cow_naicsp_to_bea.csv` gets a coverage test that every (COW, NAICSP) pair in the data maps exactly once. Also: GOS upper and lower bounds (NIPA consumption-of-fixed-capital shares, fetched here), both GOS tests, the government payroll percentage, and the 2022–24 column with 5/3 rescaling.
 - **§11.7 Sensitivities and report:** the six §7 sensitivities, `results.md`, the CSVs and two charts.

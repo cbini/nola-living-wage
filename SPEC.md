@@ -19,7 +19,7 @@ GDP and compensation are counted where the work happens, so every worker measure
 | Source | What | Grain | Access |
 |---|---|---|---|
 | MIT Living Wage Calculator | Hourly thresholds for 12 household types, Orleans Parish (FIPS 22071) and the New Orleans–Metairie metro (CBSA 35380, sensitivity only) | Current year only | Scrape `livingwage.mit.edu/counties/22071` and `/metros/35380`; store dated snapshots in the repo |
-| ACS 5-year PUMS, 2020–2024 (released 2026-03-05) | Person and household microdata: wages, hours, weeks, industry, place of work | Person, with household link (`SERIALNO`) | Two pulls. (1) **LA and MS** bulk person and household files, for household typing. (2) Census API, person records with `POWSP` = 22 from **every other state** (server-side predicate), so the worker universe includes all out-of-state commuters (§4) |
+| ACS 5-year PUMS, 2020–2024 (released 2026-03-05) | Person and household microdata: wages, hours, weeks, industry, place of work | Person, with household link (`SERIALNO`) | Bulk CSV, no key needed. Pull the **LA and MS** person and household files, plus the person file for **every other state**. From each other state, keep every person in any household with a member whose `POWSP` = 22, and discard the rest of the file. This makes the worker universe include all out-of-state commuters (§4) with their household members |
 | BEA CAGDP2 | GDP by county and industry, current dollars | County × NAICS sector × year | BEA API (free key) |
 | BEA CAINC6N | Compensation of employees by industry, place of work | County × NAICS sector × year | BEA API |
 | BEA CAINC5N | Wage and salary disbursements by industry, place of work | County × NAICS sector × year | BEA API. Used for the survey-vs-admin check (§8) and the §6 comparison |
@@ -40,7 +40,7 @@ MIT defines these as full-time rates at 2,080 hours per year. The pipeline scrap
 
 ## 4. Worker universe and wage construction
 
-**Filter (person file):** the universe is every PUMS person, from any state of residence, meeting all of the following. LA and MS residents come from the bulk files; residents of every other state come from the API pull (§3). The universe drives Q1 and Q3; residence and household matter only for Q2.
+**Filter (person file):** the universe is every PUMS person, from any state of residence, meeting all of the following. Every state's residents come from the bulk files (§3). The universe drives Q1 and Q3; residence and household matter only for Q2.
 - Place of work state `POWSP` = 22 and place-of-work PUMA `POWPUMA` = Orleans Parish. **Verify the code(s)** against the PUMS data dictionary and the place-of-work PUMA equivalency file. Orleans should be identifiable as its own place-of-work area, but confirm it for each PUMA vintage in the file (see §8).
 - Worked in the past 12 months, with `WAGP` > 0, `WKHP` > 0, and `WKWN` > 0.
 - Class of worker `COW` in wage/salary categories (private for-profit, nonprofit, local/state/federal government). Exclude self-employed and unpaid family workers from the wage gap and report them separately as a count.
@@ -67,7 +67,7 @@ Break out each by industry (BEA CAGDP2 lines; see the crosswalk rule in §8) and
 **Household-type comparison (Q2):** Attach each worker to a MIT household type, then compare their wage with that type's threshold.
 - **Unit (decided, §12):** the worker's family unit within the PUMS household: the reference person, their spouse or unmarried partner, and their own children under 18 (`RELSHIPP`, `AGEP`). Subfamilies are split out as their own units using `SFN`/`SFR`; for example, a single parent and child living with the parent's parents form a 1-adult, 1-child unit. Roommates and other adult relatives form their own single-adult units. This matches MIT's assumption of one pooled family budget.
 - **Thresholds:** Orleans MIT thresholds for every worker, wherever they live. Metro thresholds are a §7 sensitivity.
-- **Coverage:** household typing uses LA and MS households only. Commuters from other states (the API pull) have no household records and appear as a "household not typed" row with their count and gap.
+- **Coverage:** every commuter's household members are retained from the bulk person files (§3), so all workers are typed, wherever they live.
 - **Adults:** 1 or 2. **Children:** capped at 3 (flag households with more).
 - **Working adults:** 2 if both adults have `WAGP` > 0 or self-employment income; otherwise 1.
 - **Output:** a 12-cell table showing workers, the share below their own-household threshold, and the total gap in each cell. Report a side-by-side view: below the floor vs. below their own threshold.
@@ -117,7 +117,7 @@ Run each as a parameter in one config file, never hand-edited in code:
 - **Disclosure suppression.** BEA marks some county-industry cells "(D)". Carry them as unknown, not zero, and report how much GDP falls in suppressed cells.
 - **Tips and cash income** are in `WAGP` only as reported. Note the likely undercount for hospitality.
 - **Survey vs. administrative totals.** Sum weighted `WAGP` for the universe and compare with CAINC5N wage disbursements. A large mismatch (say beyond ±15%) needs explaining before any ratio is published.
-- **Source consistency (QA log only).** Mississippi residents come from the bulk file and other-state residents from the API. Log their counts, weighted wages and gap separately in `data/out/qa.md` to catch a bad pull. This split is not reported in `results.md`, because it says nothing about employer pay and the other-state group is likely too small for meaningful MOEs.
+- **Source consistency (QA log only).** Log Mississippi and other-state residents' counts, weighted wages and gap separately in `data/out/qa.md`, as a plausibility check on the out-of-state pulls. This split is not reported in `results.md`, because it says nothing about employer pay and the other-state group is likely too small for meaningful MOEs.
 - **POWPUMA labels in the API.** The 2024 5-year API exposes only `POWPUMA` "based on 2020 Census definitions", with no 2010-vintage field. Check at the checkpoint whether the bulk file carries separate 2010 and 2020 fields, or whether Census has recoded all years to 2020 definitions.
 
 ## 9. Repo layout
@@ -128,7 +128,7 @@ nola-living-wage/
 ├── README.md               # how to reproduce in three commands
 ├── pyproject.toml          # uv-managed; python ≥3.12; duckdb, polars, httpx, pyyaml, pytest
 ├── config.yaml             # years, floor household type, thresholds, sensitivity params
-├── .env.example            # CENSUS_API_KEY, BEA_API_KEY, BLS_API_KEY
+├── .env.example            # BEA_API_KEY, BLS_API_KEY (optional; BEA key is proxy-held in cloud sessions)
 ├── src/nola_lw/
 │   ├── fetch/              # one module per source; writes to data/raw/ with a manifest (url, date, sha256)
 │   ├── build/              # universe, wages, household types, crosswalk
@@ -178,7 +178,7 @@ nola-living-wage/
 | a | Family unit or whole PUMS household as MIT's household? | Family unit, with subfamilies (`SFN`/`SFR`) split out as their own units. This matches MIT's single pooled family budget. | §5 |
 | b | Home-parish thresholds for commuters? | Orleans thresholds for everyone as the headline. As of 2026-09-26, Orleans's figures are lower than Jefferson's, St. Tammany's and the metro figure (other parishes not checked), so Orleans is the conservative choice. Metro (CBSA 35380) thresholds are a sensitivity. Home-county thresholds per worker are not used: the spread is at most ~7% and residence is known only at PUMA level. Commuters stay in all gap and capacity math, and a leakage breakdown shows where gap dollars go. | §5, §7.6 |
 | c | Public-sector workers in the capacity test? | Kept in all counts and in gap ÷ GDP and gap ÷ compensation. The GOS test is shown both ways with equal prominence (private ÷ private GOS; all-sector ÷ total GOS). The government gap is also shown as a percent raise to government payroll. | §6 |
-| d | Out-of-state commuters beyond MS? | Census API pull of `POWSP` = 22 persons from every other state, so the employer-side universe is complete. Household typing uses LA and MS households only; other-state commuters appear as an untyped row. | §3, §4, §5, §7.4, §8 (MS vs. other-state split only in the QA log) |
+| d | Out-of-state commuters beyond MS? | Bulk person files for every other state, filtered to households with a member whose `POWSP` = 22, so the employer-side universe is complete and every commuter can be household-typed. No Census API key is needed. (This changed from an API pull on 2026-09-27: the Census API is GET-only, so a proxy-held key can't reach it.) | §3, §4, §5, §7.4, §8 (MS vs. other-state split only in the QA log) |
 | e | Consumption base for price pass-through? | "CAPCE" does not exist; the source is SAPCE. The spending base is reported as two bounds: resident consumption (SAPCE × CAINC1/SAINC1), which overstates the price effect, and Orleans GDP, which understates it. | §3, §7.1 |
 | f | Year window? | The published 2020–2024 pool is the headline, with a 2022–2024 column alongside it in the main tables. Counts and dollar totals are rescaled by 5/3 on the subset. | §6, §7.5 |
 
