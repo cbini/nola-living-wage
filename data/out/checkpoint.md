@@ -102,9 +102,9 @@ Commute flows (independent of the naming convention): share of in-state resident
 
 Highest-share group per year: {'2020': '024', '2021': '024', '2022': '024', '2023': '024', '2024': '024'}.
 
-Official composition check (https://usa.ipums.org/usa/resources/volii/county_migpuma_pwpuma_2022.xls): county 071 maps to POWPUMA(s) ['02400']; POWPUMA(s) ['02400'] contain(s) counties ['071']. **Match**.
+IPUMS USA county-to-POWPUMA lookup check (2022; 2020 Census POWPUMA definitions; https://usa.ipums.org/usa/resources/volii/county_migpuma_pwpuma_2022.xls): county 071 maps to POWPUMA(s) ['02400']; POWPUMA(s) ['02400'] contain(s) counties ['071']. **Match**.
 
-**Verdict: CONFIRMED by composition, commute flows, presence in every year and the official composition file** — config `orleans.powpuma` = ['02400']. The file has one `POWPUMA` field, labelled as 2020 Census definitions, with no 2010-vintage field; the same codes appear in every survey year, which is consistent with Census coding all five years to 2020 POWPUMAs (an inference from the label and the data, not a Census statement). Census's official 2020 POWPUMA equivalency file (https://usa.ipums.org/usa/resources/volii/county_migpuma_pwpuma_2022.xls) confirms county 071 maps only to POWPUMA ['02400'] and vice versa.
+**Verdict: CONFIRMED by composition, commute flows, presence in every year and the IPUMS lookup** — config `orleans.powpuma` = ['02400']. The file has one `POWPUMA` field, labelled as 2020 Census definitions, with no 2010-vintage field; the same codes appear in every survey year, which is consistent with Census coding all five years to 2020 POWPUMAs (an inference from the label and the data, not a Census statement). IPUMS USA's county-to-POWPUMA lookup (https://usa.ipums.org/usa/resources/volii/county_migpuma_pwpuma_2022.xls; compiled by IPUMS from Census Bureau geography, not a Census Bureau publication) confirms county 071 maps only to POWPUMA ['02400'] and vice versa.
 
 ## 2. Survey WAGP vs. BEA wages and salaries (place of work)
 

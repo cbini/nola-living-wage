@@ -168,16 +168,18 @@ def _section_powpuma(persons, tracts, comp_df, raw: Path, cfg) -> str:
     comp_url = cfg["pums"]["powpuma_composition_url"]
     comp_res = orleans_powpumas(comp_df, cfg)
     official_ok = comp_res["powpumas"] == list(o["powpuma"]) and comp_res["counties"] == [cty]
-    s += (f"\nOfficial composition check ({comp_url}): county {cty} maps to POWPUMA(s) {comp_res['powpumas']}; "
+    s += (f"\nIPUMS USA county-to-POWPUMA lookup check (2022; 2020 Census POWPUMA definitions; {comp_url}): "
+          f"county {cty} maps to POWPUMA(s) {comp_res['powpumas']}; "
           f"POWPUMA(s) {o['powpuma']} contain(s) counties {comp_res['counties']}. "
           f"**{'Match' if official_ok else 'MISMATCH — stop and review'}**.\n")
     ok = all(all(c[1:]) for c in checks) and flows_ok and official_ok
-    s += (f"\n**Verdict: {'CONFIRMED by composition, commute flows, presence in every year and the official composition file' if ok else 'NOT CONFIRMED — stop and review'}** "
+    s += (f"\n**Verdict: {'CONFIRMED by composition, commute flows, presence in every year and the IPUMS lookup' if ok else 'NOT CONFIRMED — stop and review'}** "
           f"— config `orleans.powpuma` = {o['powpuma']}. "
           "The file has one `POWPUMA` field, labelled as 2020 Census definitions, with no 2010-vintage field; the same codes "
           "appear in every survey year, which is consistent with Census coding all five years to 2020 POWPUMAs (an inference "
-          f"from the label and the data, not a Census statement). Census's official 2020 POWPUMA equivalency file "
-          f"({comp_url}) confirms county {cty} maps only to POWPUMA {o['powpuma']} and vice versa.\n\n")
+          f"from the label and the data, not a Census statement). IPUMS USA's county-to-POWPUMA lookup "
+          f"({comp_url}; compiled by IPUMS from Census Bureau geography, not a Census Bureau publication) "
+          f"confirms county {cty} maps only to POWPUMA {o['powpuma']} and vice versa.\n\n")
     return s
 
 
