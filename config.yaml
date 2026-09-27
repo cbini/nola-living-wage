@@ -115,3 +115,12 @@ checkpoint:
   # the like-for-like check adds them. The living-wage analysis still uses universe.cow_wage.
   wage_check_cow_bea: ["1", "2", "3", "4", "5", "7"]
 moe_z: 1.645
+
+report:
+  # SPEC §6 names hospitality as the likely self-funding failure; the headline states its result either way
+  spec_expected_fail: ["79"]
+  # Line-specific caveats appended to the negative-GOS footnote (text only; numbers are computed)
+  line_notes:
+    "76": "Louisiana's arts-line tax ratio plausibly reflects casino gaming taxes, which may not fall on Orleans's arts line in the same proportion."
+  hist_bin_usd: 1          # wage histogram bin width, $/hr
+  hist_max_quantile: 0.95  # wage histogram x-axis cut (weighted quantile)

@@ -38,7 +38,8 @@ def main(argv: list[str] | None = None) -> None:
     f.add_argument("--refresh-mit", action="store_true", help="re-scrape MIT instead of using the committed snapshot")
     f.add_argument("--only", choices=SOURCES, help="fetch one source")
     sub.add_parser("checkpoint", help="write data/out/checkpoint.md")
-    a = sub.add_parser("all", help="fetch, then checkpoint")
+    sub.add_parser("run", help="build, analyze and write data/out/results.md, CSVs, charts and qa.md")
+    a = sub.add_parser("all", help="fetch, then checkpoint, then run")
     a.add_argument("--refresh-mit", action="store_true")
     args = p.parse_args(argv)
     cfg = load_config()
@@ -47,3 +48,6 @@ def main(argv: list[str] | None = None) -> None:
     if args.cmd in ("checkpoint", "all"):
         from nola_lw.checkpoint import write_report
         print("checkpoint:", write_report(cfg))
+    if args.cmd in ("run", "all"):
+        from nola_lw.pipeline import run
+        print("run:", run(cfg))

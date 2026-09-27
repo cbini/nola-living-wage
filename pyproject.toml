@@ -10,6 +10,7 @@ dependencies = [
     "duckdb",
     "pyyaml",
     "fastexcel>=0.21.0",
+    "matplotlib>=3.11.2",
 ]
 
 [project.scripts]
