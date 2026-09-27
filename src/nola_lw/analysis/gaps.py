@@ -21,21 +21,21 @@ def add_floor_gap(u: pl.DataFrame, floor: float) -> pl.DataFrame:
     ).with_columns(gap_yr=pl.col("gap_hr") * pl.col("hours"))
 
 
-def _wsum(df: pl.DataFrame, w: str, col: str | None = None) -> float:
+def wsum(df: pl.DataFrame, w: str, col: str | None = None) -> float:
     return df[w].sum() if col is None else (df[col] * df[w]).sum()
 
 
 def floor_summary(u: pl.DataFrame) -> dict[str, tuple[float, float]]:
     below = pl.col("below")
     return {
-        "workers": replicate_estimate(u, lambda d, w: _wsum(d, w)),
-        "below": replicate_estimate(u, lambda d, w: _wsum(d.filter(below), w)),
-        "share_below": replicate_estimate(u, lambda d, w: _wsum(d.filter(below), w) / _wsum(d, w)),
-        "total_gap": replicate_estimate(u, lambda d, w: _wsum(d, w, "gap_yr")),
+        "workers": replicate_estimate(u, lambda d, w: wsum(d, w)),
+        "below": replicate_estimate(u, lambda d, w: wsum(d.filter(below), w)),
+        "share_below": replicate_estimate(u, lambda d, w: wsum(d.filter(below), w) / wsum(d, w)),
+        "total_gap": replicate_estimate(u, lambda d, w: wsum(d, w, "gap_yr")),
         "mean_short_hr": replicate_estimate(
-            u, lambda d, w: _wsum(d.filter(below), w, "gap_hr") / _wsum(d.filter(below), w)),
+            u, lambda d, w: wsum(d.filter(below), w, "gap_hr") / wsum(d.filter(below), w)),
         "mean_short_yr": replicate_estimate(
-            u, lambda d, w: _wsum(d.filter(below), w, "gap_yr") / _wsum(d.filter(below), w)),
+            u, lambda d, w: wsum(d.filter(below), w, "gap_yr") / wsum(d.filter(below), w)),
     }
 
 
@@ -56,8 +56,8 @@ def leakage(u: pl.DataFrame) -> pl.DataFrame:
     rows = []
     for val in sorted(u["residence"].unique().to_list()):
         here = pl.col("residence") == val
-        sw = replicate_estimate(u, lambda d, w, here=here: _wsum(d.filter(below & here), w) / _wsum(d.filter(below), w))
-        sg = replicate_estimate(u, lambda d, w, here=here: _wsum(d.filter(here), w, "gap_yr") / _wsum(d, w, "gap_yr"))
+        sw = replicate_estimate(u, lambda d, w, here=here: wsum(d.filter(below & here), w) / wsum(d.filter(below), w))
+        sg = replicate_estimate(u, lambda d, w, here=here: wsum(d.filter(here), w, "gap_yr") / wsum(d, w, "gap_yr"))
         rows.append({"residence": val, "share_workers": sw[0], "share_workers_se": sw[1],
                      "share_gap": sg[0], "share_gap_se": sg[1]})
     return pl.DataFrame(rows)

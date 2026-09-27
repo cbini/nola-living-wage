@@ -67,6 +67,9 @@ bea:
     "Dollars": 1
     "Number of persons": 1
 
+households:
+  max_children: 3
+
 universe:
   cow_wage: ["1", "2", "3", "4", "5"]
   cow_public: ["3", "4", "5"]
