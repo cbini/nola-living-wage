@@ -30,6 +30,15 @@ def add_floor_gap(u: pl.DataFrame, floor: float) -> pl.DataFrame:
     ).with_columns(gap_yr=pl.col("gap_hr") * pl.col("hours"))
 
 
+def add_own_gap(u: pl.DataFrame, thresholds: dict[str, float]) -> pl.DataFrame:
+    """As add_floor_gap, but each worker against the living wage of their own household type (Q2)."""
+    t = pl.col("household").replace_strict(thresholds)
+    return u.with_columns(
+        below=pl.col("wage_hr") < t,
+        gap_hr=(t - pl.col("wage_hr")).clip(lower_bound=0),
+    ).with_columns(gap_yr=pl.col("gap_hr") * pl.col("hours"))
+
+
 def wsum(df: pl.DataFrame, w: str, col: str | None = None) -> float:
     return df[w].sum() if col is None else (df[col] * df[w]).sum()
 

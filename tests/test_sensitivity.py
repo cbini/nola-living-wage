@@ -115,3 +115,14 @@ def test_survey_scaled_to_bea_rows():
     assert by["all"]["workers_below"] == 0          # raised above the floor
     assert by["like_for_like"]["workers_below"] > 0  # unchanged: still below
     assert {r["sensitivity"] for r in rows} == {"survey_scaled_to_bea"}
+
+
+def test_own_threshold_rows_only_with_household_column():
+    years = list(range(2020, 2025))
+    n = len(years)
+    base = {"year": [str(y) for y in years], "residence": ["orleans"] * n, "outlier": [False] * n,
+            "earnings": [36_000.0] * n, "hours": [2000.0] * n, "wage_hr": [18.0] * n}
+    u = pl.DataFrame(base | {"household": ["a1_w1_c1"] * n} | _weighted(n, [10.0] * n))
+    rows = sensitivity.own_threshold_rows(u, CFG)
+    assert [r["variant"] for r in rows] == ["county", "metro"]
+    assert all(r["sensitivity"] == "own_threshold" and r["workers_below"] > 0 for r in rows)

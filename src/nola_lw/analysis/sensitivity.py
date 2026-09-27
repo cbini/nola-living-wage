@@ -5,7 +5,7 @@ from collections.abc import Callable
 import polars as pl
 
 from nola_lw.analysis.capacity import _cell
-from nola_lw.analysis.gaps import add_floor_gap, floor_summary, year_subset
+from nola_lw.analysis.gaps import add_floor_gap, add_own_gap, floor_summary, year_subset
 from nola_lw.build.households import load_thresholds
 from nola_lw.fetch.bls import cpi_factor
 
@@ -57,6 +57,13 @@ def _row(sensitivity: str, variant: str, summary: dict, factor: float) -> dict:
     gap_est, gap_se = summary["total_gap"]
     return {"sensitivity": sensitivity, "variant": variant, "workers_below": below_est,
             "workers_below_se": below_se, "total_gap": gap_est, "total_gap_se": gap_se, "factor": factor}
+
+
+def own_threshold_rows(u: pl.DataFrame, cfg) -> list[dict]:
+    """Q2: workers below their own household's living wage, with Orleans (county) and metro thresholds.
+    `u` is the headline universe (outliers dropped, pool window) with the `household` column."""
+    return [_row("own_threshold", area, floor_summary(add_own_gap(u, load_thresholds(cfg, area=area))), 1.0)
+            for area in ("county", "metro")]
 
 
 def scaled_rows(u: pl.DataFrame, floor: float, cfg, wage_scale: dict[str, float]) -> list[dict]:
@@ -118,6 +125,9 @@ def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.Data
         self_u = year_subset(u_self.filter(~pl.col("outlier")), pool, pool)
         rows.append(_row("self_employed_included", "self_employed_included",
                           floor_summary(add_floor_gap(self_u, floor)), 1.0))
+
+    if "household" in headline_u.columns:
+        rows += own_threshold_rows(headline_u, cfg)
 
     if wage_scale:
         rows += scaled_rows(headline_u, floor, cfg, wage_scale)

@@ -336,16 +336,21 @@ def _tables(ctx: dict) -> str:
     out.append("\n## 7. Sensitivities\n")
     out.append(f"All rows use {yp} unless the row says otherwise. \"Beyond MOE\" = the change from the headline "
                f"exceeds the headline's own 90% MOE on workers below or total gap; for years_2022_2024, the paired "
-               f"window difference exceeds its own 90% MOE (as in the headline).\n\n")
+               f"window difference exceeds its own 90% MOE (as in the headline). The own_threshold rows answer Q2: "
+               f"workers below their own household's living wage and the gap to it, with Orleans (county) and metro "
+               f"thresholds; the metro row is compared with the county row.\n\n")
     sens = ctx["sensitivities"]
     hl = _row(sens, "sensitivity", "headline")
     z = cfg["moe_z"]
     wd = ctx["window_diff"]
     rows = []
+    own = {r["variant"]: r for r in sens.filter(pl.col("sensitivity") == "own_threshold").iter_rows(named=True)}
     for r in sens.iter_rows(named=True):
+        base = own.get("county") if r["sensitivity"] == "own_threshold" else hl  # Q2 rows vs. the Q2 result
         beyond = (wd["below"][2] or wd["total_gap"][2] if r["sensitivity"] == "years_2022_2024" else
-                  abs(r["workers_below"] - hl["workers_below"]) > z * hl["workers_below_se"]
-                  or abs(r["total_gap"] - hl["total_gap"]) > z * hl["total_gap_se"])
+                  r["variant"] != "county"
+                  and (abs(r["workers_below"] - base["workers_below"]) > z * base["workers_below_se"]
+                       or abs(r["total_gap"] - base["total_gap"]) > z * base["total_gap_se"]))
         rows.append([r["sensitivity"], r["variant"], f"{r['factor']:.4f}", f.n(r["workers_below"], r["workers_below_se"]),
                      f.usd(r["total_gap"], r["total_gap_se"]), "yes" if beyond else "no"])
     out.append(_table(["Sensitivity", "Variant", "Threshold factor", "Workers below", "Total gap", "Beyond MOE"], rows))

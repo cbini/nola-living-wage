@@ -140,7 +140,7 @@ Each worker against the Orleans MIT threshold for their own family unit. The ann
 
 ## 7. Sensitivities
 
-All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the change from the headline exceeds the headline's own 90% MOE on workers below or total gap; for years_2022_2024, the paired window difference exceeds its own 90% MOE (as in the headline).
+All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the change from the headline exceeds the headline's own 90% MOE on workers below or total gap; for years_2022_2024, the paired window difference exceeds its own 90% MOE (as in the headline). The own_threshold rows answer Q2: workers below their own household's living wage and the gap to it, with Orleans (county) and metro thresholds; the metro row is compared with the county row.
 
 
 | Sensitivity | Variant | Threshold factor | Workers below | Total gap | Beyond MOE |
@@ -158,6 +158,8 @@ All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the chang
 | years_2022_2024 | years_2022_2024 | 1.0000 | 75,843 ± 3,792 | $962.7M ± $63.3M | yes |
 | metro_thresholds | metro_thresholds | 1.0000 | 73,357 ± 3,077 | $981.1M ± $54.9M | no |
 | self_employed_included | self_employed_included | 1.0000 | 80,756 ± 2,883 | $1,078.9M ± $55.1M | yes |
+| own_threshold | county | 1.0000 | 76,673 ± 3,026 | $1,496.5M ± $86.6M | no |
+| own_threshold | metro | 1.0000 | 76,936 ± 3,037 | $1,519.3M ± $87.3M | no |
 | survey_scaled_to_bea | all | 1.0000 | 63,525 ± 2,849 | $771.1M ± $47.9M | yes |
 | survey_scaled_to_bea | like_for_like | 1.0000 | 68,951 ± 2,898 | $884.7M ± $51.6M | yes |
 

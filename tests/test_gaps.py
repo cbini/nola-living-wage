@@ -119,3 +119,10 @@ def test_window_difference_paired_not_significant():
     for k in ("below", "share_below", "total_gap"):
         d, se, differs = out[k]
         assert abs(d) <= 1.645 * se and not differs
+
+
+def test_add_own_gap_uses_each_workers_household_threshold():
+    u = pl.DataFrame({"household": ["a1_w1_c0", "a1_w1_c1"], "wage_hr": [18.0, 18.0], "hours": [1000.0, 1000.0]})
+    out = gaps.add_own_gap(u, {"a1_w1_c0": 20.0, "a1_w1_c1": 30.0})
+    assert out["below"].to_list() == [True, True]
+    assert out["gap_yr"].to_list() == [2000.0, 12000.0]
