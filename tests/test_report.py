@@ -175,3 +175,15 @@ def test_charts_written(tmp_path):
     for path in [charts.gap_vs_gos(ctx["windows"]["pool"]["capacity"], LABELS, CFG, tmp_path),
                  charts.wage_distribution(ctx["u"], FLOOR, CFG, tmp_path)]:
         assert path.exists() and path.stat().st_size > 0
+
+
+def test_crosscheck_section():
+    """Section 8 renders survey and OEWS percentiles side by side, and the OEWS share is marked interpolated."""
+    q = {k: (10.0 + i, 0.1) for i, k in enumerate(("p10", "p25", "p50", "p75", "p90"))} | {"share_below": (0.4, 0.01)}
+    ctx = dict(_ctx()) | {"crosscheck": {
+        "metro": {"powpumas": ["02300", "02400"], "mixed": []},
+        "oews": {"employment": 1000.0, "p10": 11.0, "p25": 15.0, "p50": 22.0, "p75": 35.0, "p90": 50.0},
+        "oews_share_below": 0.42, "survey_orleans": q, "survey_metro": q}}
+    md = results_md(ctx)
+    assert "## 8. Survey pay vs. employer-reported pay" in md
+    assert "42.0% (interpolated)" in md

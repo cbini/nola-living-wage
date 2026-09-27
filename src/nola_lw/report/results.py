@@ -389,6 +389,32 @@ def _caveats(ctx: dict) -> str:
     )
 
 
+def _crosscheck(ctx: dict) -> str:
+    """Survey pay vs. employer-reported (OEWS) pay, and the survey-scaled-to-BEA sensitivity rows."""
+    x, cfg, f = ctx["crosscheck"], ctx["cfg"], Fmt(ctx["cfg"]["moe_z"])
+    o, so, sm = x["oews"], x["survey_orleans"], x["survey_metro"]
+    rows = [[k[1:] + "th percentile" if k != "p50" else "median"] + [f.usd_plain(*so[k], digits=2),
+             f.usd_plain(*sm[k], digits=2), f.usd_plain(o[k], digits=2)] for k in ("p10", "p25", "p50", "p75", "p90")]
+    rows.append(["share below the floor", f.pct(*so["share_below"]), f.pct(*sm["share_below"]),
+                 f.pct(x["oews_share_below"]) + " (interpolated)" if x["oews_share_below"] is not None else DASH])
+    sb = ctx["survey_bea"]
+    mixed = f" POWPUMAs that mix metro and non-metro parishes ({', '.join(x['metro']['mixed'])}) are left out." \
+        if x["metro"]["mixed"] else ""
+    return ("\n## 8. Survey pay vs. employer-reported pay\n\n"
+            f"Survey wages for the Orleans universe total {abs(sb['pct']):.1%} {'less' if sb['pct'] < 0 else 'more'} "
+            f"than BEA wage and salary disbursements ({abs(sb['pct_like']):.1%} like-for-like). Table 7's "
+            f"survey_scaled_to_bea rows raise every survey wage so the totals match; that bounds the gap if the whole "
+            f"difference is under-reporting.\n\n"
+            f"Independent check: BLS Occupational Employment and Wage Statistics (employer-reported hourly wages), "
+            f"May {cfg['oews']['year']}, New Orleans–Metairie metro, {o['employment']:,.0f} jobs, moved to "
+            f"{cfg['cpi']['target']} dollars. The survey column for metro workplaces uses the same "
+            f"{_years(ctx['windows']['pool'])} survey pool, restricted to POWPUMAs made up only of metro parishes "
+            f"({', '.join(x['metro']['powpumas'])}).{mixed} OEWS counts jobs, not people, and its wages exclude "
+            f"overtime premiums and most bonuses.\n\n"
+            + _table(["Hourly wage", "Survey, Orleans workplaces", "Survey, metro workplaces", "OEWS (employers), metro"],
+                     rows))
+
+
 def results_md(ctx: dict) -> str:
     cfg = ctx["cfg"]
     head, notes = headline(ctx)
@@ -401,6 +427,7 @@ def results_md(ctx: dict) -> str:
         f"Reading the tables: \"{DASH}\" means not defined[^dash]; \"suppressed\" means BEA withheld a needed cell; "
         "\"no sample\" means no survey workers in that group. No unknown value is printed as 0.\n\n"
         + _tables(ctx)
+        + (_crosscheck(ctx) if "crosscheck" in ctx else "")
         + "\n## Charts\n\n![Floor gap vs. modeled GOS by industry](gap_vs_gos.png)\n\n"
         "![Distribution of hourly wages with the floor marked](wage_distribution.png)\n"
         + _caveats(ctx) + "\n"
@@ -437,6 +464,14 @@ def write_csvs(ctx: dict, out: Path) -> list[Path]:
                                   schema={"window": pl.Utf8, "measure": pl.Utf8, "est": pl.Float64, "se": pl.Float64}),
         "sensitivities": ctx["sensitivities"],
     }
+    if "crosscheck" in ctx:
+        x = ctx["crosscheck"]
+        tables["crosscheck"] = pl.DataFrame(
+            [{"source": src, "measure": k, "est": v[0], "se": v[1]} for src in ("survey_orleans", "survey_metro")
+             for k, v in x[src].items()]
+            + [{"source": "oews_metro", "measure": k, "est": v, "se": None} for k, v in x["oews"].items()]
+            + [{"source": "oews_metro", "measure": "share_below", "est": x["oews_share_below"], "se": None}],
+            schema={"source": pl.Utf8, "measure": pl.Utf8, "est": pl.Float64, "se": pl.Float64})
     paths = []
     for name, df in tables.items():
         if "se" in df.columns:

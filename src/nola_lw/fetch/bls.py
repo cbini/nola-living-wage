@@ -39,10 +39,8 @@ def cpi_factor(cpi_json: dict, base_year: int, target: str) -> float:
     return m[target] / annual_mean(cpi_json, base_year)
 
 
-def fetch_cpi(cfg, out_dir: Path = Path("data/raw/bls")) -> Path:
-    c = cfg["cpi"]
-    start, end = c["fetch_years"]
-    body = {"seriesid": [c["series"]], "startyear": str(start), "endyear": str(end)}
+def _fetch(series: list[str], start: int, end: int, dest: Path) -> Path:
+    body = {"seriesid": series, "startyear": str(start), "endyear": str(end)}
     key = os.environ.get("BLS_API_KEY")
     url = V2 if key else V1
     if key:
@@ -50,8 +48,28 @@ def fetch_cpi(cfg, out_dir: Path = Path("data/raw/bls")) -> Path:
     r = httpx.post(url, json=body, timeout=120)
     r.raise_for_status()
     d = check_response(r.json())
-    out_dir.mkdir(parents=True, exist_ok=True)
-    dest = out_dir / f"{c['series']}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(d, indent=1))
-    record(f"{url}?series={c['series']}&start={start}&end={end}", dest)
+    record(f"{url}?series={','.join(series)}&start={start}&end={end}", dest)
     return dest
+
+
+def fetch_cpi(cfg, out_dir: Path = Path("data/raw/bls")) -> Path:
+    c = cfg["cpi"]
+    start, end = c["fetch_years"]
+    return _fetch([c["series"]], start, end, out_dir / f"{c['series']}.json")
+
+
+def oews_series(cfg) -> list[str]:
+    """OEWS series ids: OE + U + M(etro) + area(7) + industry 000000 + occupation 000000 (all) + datatype(2)."""
+    o = cfg["oews"]
+    return [f"OEUM{o['area']}000000000000{dt}" for dt in o["datatypes"].values()]
+
+
+def oews_path(cfg, out_dir: Path = Path("data/raw/bls")) -> Path:
+    return out_dir / f"oews_{cfg['oews']['area']}_{cfg['oews']['year']}.json"
+
+
+def fetch_oews(cfg, out_dir: Path = Path("data/raw/bls")) -> Path:
+    y = cfg["oews"]["year"]
+    return _fetch(oews_series(cfg), y, y, oews_path(cfg, out_dir))

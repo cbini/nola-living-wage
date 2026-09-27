@@ -5,6 +5,7 @@ from pathlib import Path
 import polars as pl
 
 from nola_lw.analysis import capacity as cap
+from nola_lw.analysis.crosscheck import crosscheck
 from nola_lw.analysis.gaps import (add_floor_gap, floor_summary, household_table, leakage, summary_by,
                                    window_difference, year_subset)
 from nola_lw.analysis.se import weighted_total
@@ -61,15 +62,16 @@ def run(cfg, raw: Path = Path("data/raw"), out: Path = Path("data/out")) -> Path
     panel = cap.to_target_dollars(cap.bea_panel(bea, fa, industries, cfg), cpi_json, cfg)
 
     windows = {name: _window(u, panel, thresholds, cfg["years"][name], cfg) for name in ("pool", "subset")}
-    sens = run_sensitivities(u_all, {"bea": bea, "cpi_json": cpi_json}, cfg,
-                            u_self=build_universe(persons, cpi_json, cfg, include_self_employed=True))
-    pool = cfg["years"]["pool"]
-    window_diff = window_difference(add_floor_gap(year_subset(u, pool, pool), floor), cfg["years"]["subset"], pool,
-                                    cfg["moe_z"])
-
     bea_w, _ = bea_wages_2024usd(bea, cpi_json, cfg)
     survey_bea = {"pct": wage_check(persons, bea_w, cfg)["pct_diff"],
                   "pct_like": wage_check(persons, bea_w, cfg, cow=cfg["checkpoint"]["wage_check_cow_bea"])["pct_diff"]}
+    wage_scale = {"all": 1 / (1 + survey_bea["pct"]), "like_for_like": 1 / (1 + survey_bea["pct_like"])}
+    sens = run_sensitivities(u_all, {"bea": bea, "cpi_json": cpi_json}, cfg,
+                            u_self=build_universe(persons, cpi_json, cfg, include_self_employed=True),
+                            wage_scale=wage_scale)
+    pool = cfg["years"]["pool"]
+    window_diff = window_difference(add_floor_gap(year_subset(u, pool, pool), floor), cfg["years"]["subset"], pool,
+                                    cfg["moe_z"])
 
     pool_g = add_floor_gap(u, floor)
     by_src = []
@@ -93,6 +95,7 @@ def run(cfg, raw: Path = Path("data/raw"), out: Path = Path("data/out")) -> Path
         "children_over_cap": (over_cap.height, _weighted_count(over_cap)),
         "minors": (minors.height, _weighted_count(minors)),
     }
-    ctx = {"cfg": cfg, "floor": floor, "thresholds": thresholds, "labels": labels, "windows": windows,
+    xcheck = crosscheck(persons, year_subset(u, pool, pool), cpi_json, cfg, floor, raw)
+    ctx = {"crosscheck": xcheck, "cfg": cfg, "floor": floor, "thresholds": thresholds, "labels": labels, "windows": windows,
            "sensitivities": sens, "window_diff": window_diff, "survey_bea": survey_bea, "u": pool_g, "qa": qa}
     return write_results(ctx, out)

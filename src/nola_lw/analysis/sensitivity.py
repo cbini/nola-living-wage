@@ -59,7 +59,17 @@ def _row(sensitivity: str, variant: str, summary: dict, factor: float) -> dict:
             "workers_below_se": below_se, "total_gap": gap_est, "total_gap_se": gap_se, "factor": factor}
 
 
-def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.DataFrame | None = None) -> pl.DataFrame:
+def scaled_rows(u: pl.DataFrame, floor: float, cfg, wage_scale: dict[str, float]) -> list[dict]:
+    """Survey pay raised by each factor (employer-reported total ÷ survey total) to test under-reporting.
+    `u` is the headline universe (outliers dropped, pool window)."""
+    return [_row("survey_scaled_to_bea", name,
+                 floor_summary(add_floor_gap(u.with_columns(earnings=pl.col("earnings") * f,
+                                                            wage_hr=pl.col("wage_hr") * f), floor)), 1.0)
+            for name, f in wage_scale.items()]
+
+
+def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.DataFrame | None = None,
+                      wage_scale: dict[str, float] | None = None) -> pl.DataFrame:
     """The sensitivity table (SPEC §7): headline, 3 pass-through p × 2 spending bases,
     outliers included, hours rule, Louisiana residents only, 2022-24 only, metro thresholds,
     and, when `u_self` (the universe built with `include_self_employed=True`) is given,
@@ -108,5 +118,8 @@ def run_sensitivities(u_typed: pl.DataFrame, bea_ctx: dict, cfg, u_self: pl.Data
         self_u = year_subset(u_self.filter(~pl.col("outlier")), pool, pool)
         rows.append(_row("self_employed_included", "self_employed_included",
                           floor_summary(add_floor_gap(self_u, floor)), 1.0))
+
+    if wage_scale:
+        rows += scaled_rows(headline_u, floor, cfg, wage_scale)
 
     return pl.DataFrame(rows)

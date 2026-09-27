@@ -158,6 +158,23 @@ All rows use 2020–2024 unless the row says otherwise. "Beyond MOE" = the chang
 | years_2022_2024 | years_2022_2024 | 1.0000 | 75,843 ± 3,792 | $962.7M ± $63.3M | yes |
 | metro_thresholds | metro_thresholds | 1.0000 | 73,357 ± 3,077 | $981.1M ± $54.9M | no |
 | self_employed_included | self_employed_included | 1.0000 | 80,756 ± 2,883 | $1,078.9M ± $55.1M | yes |
+| survey_scaled_to_bea | all | 1.0000 | 63,525 ± 2,849 | $771.1M ± $47.9M | yes |
+| survey_scaled_to_bea | like_for_like | 1.0000 | 68,951 ± 2,898 | $884.7M ± $51.6M | yes |
+
+## 8. Survey pay vs. employer-reported pay
+
+Survey wages for the Orleans universe total 10.3% less than BEA wage and salary disbursements (3.9% like-for-like). Table 7's survey_scaled_to_bea rows raise every survey wage so the totals match; that bounds the gap if the whole difference is under-reporting.
+
+Independent check: BLS Occupational Employment and Wage Statistics (employer-reported hourly wages), May 2025, New Orleans–Metairie metro, 445,550 jobs, moved to 2025-12 dollars. The survey column for metro workplaces uses the same 2020–2024 survey pool, restricted to POWPUMAs made up only of metro parishes (01900, 02200, 02390, 02400). OEWS counts jobs, not people, and its wages exclude overtime premiums and most bonuses.
+
+| Hourly wage | Survey, Orleans workplaces | Survey, metro workplaces | OEWS (employers), metro |
+|---|---:|---:|---:|
+| 10th percentile | $9.94 ± $0.40 | $9.57 ± $0.27 | $11.47 |
+| 25th percentile | $15.70 ± $0.48 | $15.05 ± $0.10 | $15.35 |
+| median | $25.08 ± $0.32 | $24.34 ± $0.53 | $22.89 |
+| 75th percentile | $40.30 ± $1.24 | $39.25 ± $0.34 | $36.24 |
+| 90th percentile | $64.32 ± $1.99 | $61.34 ± $1.66 | $51.78 |
+| share below the floor | 37.3% ± 1.2 pp | 39.5% ± 0.8 pp | 41.4% (interpolated) |
 
 ## Charts
 

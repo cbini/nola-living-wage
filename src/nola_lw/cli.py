@@ -15,6 +15,7 @@ def fetch(cfg, only: str | None, refresh_mit: bool) -> None:
             elif src == "bls":
                 from nola_lw.fetch import bls
                 print("bls:", bls.fetch_cpi(cfg))
+                print("bls:", bls.fetch_oews(cfg))
             elif src == "bea":
                 from nola_lw.fetch import bea, bea_api
                 print("bea:", *bea.fetch_zips(cfg))

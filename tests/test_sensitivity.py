@@ -101,3 +101,17 @@ def test_sensitivity_rows_complete():
     assert p0["factor"] == pytest.approx(1.0)
     assert p0["total_gap"] == pytest.approx(headline["total_gap"])
     assert p0["workers_below"] == pytest.approx(headline["workers_below"])
+
+
+def test_survey_scaled_to_bea_rows():
+    """Each wage-scale factor adds a row with every wage raised by that factor."""
+    years = list(range(2020, 2025))
+    n = len(years)
+    u = pl.DataFrame({"year": [str(y) for y in years], "residence": ["orleans"] * n, "outlier": [False] * n,
+                      "earnings": [36_000.0] * n, "hours": [2000.0] * n, "wage_hr": [18.0] * n} | _weighted(n, [10.0] * n))
+    floor = sensitivity.load_thresholds(CFG)[CFG["mit"]["floor_type"]]
+    rows = sensitivity.scaled_rows(u, floor, CFG, {"all": floor / 18.0 + 0.01, "like_for_like": 1.0})
+    by = {r["variant"]: r for r in rows}
+    assert by["all"]["workers_below"] == 0          # raised above the floor
+    assert by["like_for_like"]["workers_below"] > 0  # unchanged: still below
+    assert {r["sensitivity"] for r in rows} == {"survey_scaled_to_bea"}

@@ -127,3 +127,12 @@ report:
   line_notes: {}
   hist_bin_usd: 1          # wage histogram bin width, $/hr
   hist_max_quantile: 0.95  # wage histogram x-axis cut (weighted quantile)
+
+# Employer-reported pay cross-check: BLS Occupational Employment and Wage Statistics (OEWS)
+oews:
+  area: "0035380"               # New Orleans-Metairie MSA (CBSA 35380), BLS OEWS area code
+  year: 2025
+  reference_month: "2025-05"    # OEWS estimates are for May of the survey year
+  datatypes: {employment: "01", p10: "06", p25: "07", p50: "08", p75: "09", p90: "10"}
+  # CBSA 35380 parishes: Jefferson, Orleans, Plaquemines, St. Bernard, St. Charles, St. James, St. John, St. Tammany
+  metro_counties: ["051", "071", "075", "087", "089", "093", "095", "103"]
