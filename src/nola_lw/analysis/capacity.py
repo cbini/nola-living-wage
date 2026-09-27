@@ -6,13 +6,20 @@ still includes depreciation and proprietors' income). The "lower bound" subtract
 consumption-of-fixed-capital (CFC) share of GDP, using the national CFC share by industry from the
 BEA fixed-asset tables (D4). Government GOS is entirely CFC, so its lower bound is 0.
 """
+from pathlib import Path
+
 import polars as pl
 
 from nola_lw.analysis.gaps import floor_summary, summary_by
 from nola_lw.fetch.bls import cpi_factor
 
 MONEY_COLS = ["gdp", "comp", "gos", "gos_low", "wages"]
-GOV_LINE = "83"  # CAGDP2/CAINC6N/SAGDP2 "Government and government enterprises" (crosswalk.gov_line)
+INDUSTRIES_PATH = Path("crosswalks/bea_industries.csv")
+
+
+def _private_classes(cfg) -> list[str]:
+    """cow_class labels that are not "public" (config.universe.cow_class), e.g. private, nonprofit."""
+    return sorted(set(cfg["universe"]["cow_class"].values()) - {"public"})
 
 
 def gos(gdp: float | None, comp: float | None, tax_ratio: float | None) -> float | None:
@@ -22,18 +29,26 @@ def gos(gdp: float | None, comp: float | None, tax_ratio: float | None) -> float
     return gdp - comp - gdp * tax_ratio
 
 
-def validate_gos_method(bea: pl.DataFrame, cfg) -> float:
-    """Max |SAGDP2 - SAGDP4 - SAGDP3 - SAGDP7| (Louisiana), over every line common to all four
-    tables and the pool years. Raises if it exceeds `capacity.gos_validation_tol_usd`."""
+def validate_gos_method(bea: pl.DataFrame, cfg, industries_path: Path = INDUSTRIES_PATH) -> float:
+    """Max |SAGDP2 - SAGDP4 - SAGDP3 - SAGDP7| (Louisiana), over the 20 `industries_path` lines,
+    line 1, and the pool years. Raises if any of those cells is flagged (the identity can't be
+    validated against a suppressed value) or if the residual exceeds `capacity.gos_validation_tol_usd`."""
     b = cfg["bea"]
     y0, y1 = cfg["years"]["pool"]
+    lines = ["1"] + pl.read_csv(industries_path, infer_schema_length=0)["line"].to_list()
     tables = ["SAGDP2", "SAGDP3", "SAGDP4", "SAGDP7"]
     frames = {t: bea.filter((pl.col("table") == t) & (pl.col("geo") == b["state_geo"])
-                            & pl.col("year").is_between(y0, y1)).select("line_code", "year", "value")
+                            & pl.col("year").is_between(y0, y1) & pl.col("line_code").is_in(lines))
+                    .select("line_code", "year", "value", "flag")
               for t in tables}
-    joined = frames["SAGDP2"].rename({"value": "SAGDP2"})
+    joined = frames["SAGDP2"].rename({"value": "SAGDP2", "flag": "flag_SAGDP2"})
     for t in tables[1:]:
-        joined = joined.join(frames[t].rename({"value": t}), on=["line_code", "year"])
+        joined = joined.join(frames[t].rename({"value": t, "flag": f"flag_{t}"}), on=["line_code", "year"])
+    flag_cols = ["flag_SAGDP2"] + [f"flag_{t}" for t in tables[1:]]
+    flagged = joined.filter(pl.any_horizontal([pl.col(c).is_not_null() for c in flag_cols]))
+    if flagged.height:
+        cells = ", ".join(f"line {r['line_code']} {r['year']}" for r in flagged.iter_rows(named=True))
+        raise ValueError(f"cannot validate GOS method: suppressed cell(s) at {cells}")
     resid = (joined["SAGDP2"] - joined["SAGDP4"] - joined["SAGDP3"] - joined["SAGDP7"]).abs()
     max_resid = float(resid.max())
     tol = cfg["capacity"]["gos_validation_tol_usd"]
@@ -74,6 +89,7 @@ def bea_panel(bea: pl.DataFrame, fa: pl.DataFrame, industries: pl.DataFrame, cfg
     """One row per (line, year): the 20 `industries` lines plus "total" (all workers) and "private"
     (cow_class in private, nonprofit). `wages` (CAINC5N line 50) is filled only for "total"."""
     b, cap = cfg["bea"], cfg["capacity"]
+    gov_line = cfg["crosswalk"]["gov_line"]
     county, state, national = b["county_geo"], b["state_geo"], b["national_geo"]
     wl = b["wages_line"]
     y0, y1 = cfg["years"]["pool"]
@@ -95,7 +111,7 @@ def bea_panel(bea: pl.DataFrame, fa: pl.DataFrame, industries: pl.DataFrame, cfg
                 nat_gdp = _cell(bea, "SAGDP2", line, national, year)
                 cfc_share = None if fa_val is None or nat_gdp is None else fa_val / nat_gdp
             term = None if gdp is None or cfc_share is None else gdp * cfc_share
-            if line == GOV_LINE:
+            if line == gov_line:
                 gos_low, gov_gos = 0.0, g
             else:
                 gos_low = None if g is None or term is None else g - term
@@ -145,52 +161,73 @@ def window_mean(panel: pl.DataFrame, years: list[int]) -> pl.DataFrame:
     return df.group_by("line", maintain_order=True).agg(exprs)
 
 
-def gap_by_line(u: pl.DataFrame) -> pl.DataFrame:
+def gap_by_line(u: pl.DataFrame, cfg) -> pl.DataFrame:
     """Per-line gap (± SE) for `capacity_table`: `summary_by(u, "bea_line")`, plus "total" (all
-    workers) and "private" (cow_class in private, nonprofit)."""
+    workers) and "private" (cow_class in private, nonprofit, per config.universe.cow_class)."""
     by_line = summary_by(u, "bea_line").select(line="bea_line", gap="total_gap", gap_se="total_gap_se")
     total = floor_summary(u)["total_gap"]
-    private = floor_summary(u.filter(pl.col("cow_class").is_in(["private", "nonprofit"])))["total_gap"]
+    private = floor_summary(u.filter(pl.col("cow_class").is_in(_private_classes(cfg))))["total_gap"]
     extra = pl.DataFrame({"line": ["total", "private"], "gap": [total[0], private[0]],
                           "gap_se": [total[1], private[1]]})
     return pl.concat([by_line, extra])
 
 
-def capacity_table(gap_by_line: pl.DataFrame, panel_mean: pl.DataFrame) -> pl.DataFrame:
-    """One row per line: gap, gap_se, gdp, comp, gos, gos_low, gap_gdp/comp/gos/gos_low/wages, and
-    self_funding / self_funding_low in {"pass", "fail", "suppressed", "n/a" (line 83)}."""
+def capacity_table(gap_by_line: pl.DataFrame, panel_mean: pl.DataFrame, gov_line: str) -> pl.DataFrame:
+    """One row per line: gap, gap_se, gdp, comp, gos, gos_low, gap_gdp/comp/gos/gos_low/wages (each
+    with its own _se = gap_se/denominator; null, not inf or sign-inverted, when the denominator is
+    <= 0), and self_funding / self_funding_low in {"pass", "fail", "suppressed", "no sample",
+    "n/a" (`gov_line`)}. "no sample" means no PUMS-observed gap for that line (a null after the
+    join), distinct from "suppressed" (a null GOS from a flagged BEA cell)."""
     df = panel_mean.join(gap_by_line, on="line", how="left")
+
+    def ratio(denom_col: str) -> pl.Expr:
+        valid = pl.col(denom_col) > 0
+        return pl.when(valid).then(pl.col("gap") / pl.col(denom_col)).otherwise(None)
+
+    def ratio_se(denom_col: str) -> pl.Expr:
+        valid = pl.col(denom_col) > 0
+        return pl.when(valid).then(pl.col("gap_se") / pl.col(denom_col)).otherwise(None)
+
     df = df.with_columns(
-        gap_gdp=pl.col("gap") / pl.col("gdp"), gap_comp=pl.col("gap") / pl.col("comp"),
-        gap_gos=pl.col("gap") / pl.col("gos"), gap_gos_low=pl.col("gap") / pl.col("gos_low"),
-        gap_wages=pl.col("gap") / pl.col("wages"),
+        gap_gdp=ratio("gdp"), gap_gdp_se=ratio_se("gdp"),
+        gap_comp=ratio("comp"), gap_comp_se=ratio_se("comp"),
+        gap_gos=ratio("gos"), gap_gos_se=ratio_se("gos"),
+        gap_gos_low=ratio("gos_low"), gap_gos_low_se=ratio_se("gos_low"),
+        gap_wages=ratio("wages"), gap_wages_se=ratio_se("wages"),
     )
+
     def _status(gos_col: str) -> pl.Expr:
-        return (pl.when(pl.col("line") == GOV_LINE).then(pl.lit("n/a"))
+        return (pl.when(pl.col("line") == gov_line).then(pl.lit("n/a"))
+                  .when(pl.col("gap").is_null()).then(pl.lit("no sample"))
                   .when(pl.col(gos_col).is_null()).then(pl.lit("suppressed"))
                   .when(pl.col("gap") <= pl.col(gos_col)).then(pl.lit("pass"))
                   .otherwise(pl.lit("fail")))
     return df.with_columns(self_funding=_status("gos"), self_funding_low=_status("gos_low"))
 
 
-def gos_tests(u: pl.DataFrame, panel_mean: pl.DataFrame) -> dict[str, tuple[float, float]]:
+def gos_tests(u: pl.DataFrame, panel_mean: pl.DataFrame, cfg) -> dict[str, tuple[float | None, float | None]]:
     """(a) private+nonprofit gap / private GOS (upper, lower); (b) all-sector gap / total GOS
-    (upper, lower); government gap / government (line 83) compensation."""
+    (upper, lower); government gap / government (`crosswalk.gov_line`) compensation. Each ratio is
+    null (not inf or sign-inverted) when its denominator is <= 0."""
+    gov_line = cfg["crosswalk"]["gov_line"]
+
     def denom(line: str, col: str) -> float:
         return panel_mean.filter(pl.col("line") == line)[col][0]
 
-    def scale(est_se: tuple[float, float], d: float) -> tuple[float, float]:
+    def scale(est_se: tuple[float, float], d: float) -> tuple[float | None, float | None]:
+        if d is None or d <= 0:
+            return None, None
         est, se = est_se
         return est / d, se / d
 
-    private_gap = floor_summary(u.filter(pl.col("cow_class").is_in(["private", "nonprofit"])))["total_gap"]
+    private_gap = floor_summary(u.filter(pl.col("cow_class").is_in(_private_classes(cfg))))["total_gap"]
     total_gap = floor_summary(u)["total_gap"]
-    gov_gap = floor_summary(u.filter(pl.col("bea_line") == GOV_LINE))["total_gap"]
+    gov_gap = floor_summary(u.filter(pl.col("bea_line") == gov_line))["total_gap"]
 
     return {
         "private_upper": scale(private_gap, denom("private", "gos")),
         "private_lower": scale(private_gap, denom("private", "gos_low")),
         "total_upper": scale(total_gap, denom("total", "gos")),
         "total_lower": scale(total_gap, denom("total", "gos_low")),
-        "government": scale(gov_gap, denom(GOV_LINE, "comp")),
+        "government": scale(gov_gap, denom(gov_line, "comp")),
     }
