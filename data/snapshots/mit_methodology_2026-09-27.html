@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>
+      Living Wage Calculator
+      
+    </title>
+    <link href='https://fonts.googleapis.com/css?family=Merriweather:400,700,900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="/assets/application-86dd0534e5cd6b2889ee2483cc8de4540a109e9945a55d7ab8d3a12209d891dd.css" media="all" />
+    <script src="/assets/application-ee4ce8963733b9d29b34a0fa48d7e501713d7b35e13ac4ff72cf90a40bbcc138.js"></script>
+    <meta name="csrf-param" content="authenticity_token" />
+<meta name="csrf-token" content="AqjwtJdW2S9N8gPcBvdWksMSF2SGKxkYLa4m-tXkzGxHTqm4SAQsiJzcKNF_nKFnF5DSKfOb6TUgXiDIjxdfQw" />
+    
+    <link rel="icon" type="image/x-icon" href="/assets/favicon/favicon-fa07823f76f96ba141a7ef916b2d3b0a024d6877499bade0c6371f9141dd4491.ico" />
+    <meta name="built-on"    content="2026-02-15">
+    <meta name="git-sha"     content="55b4996">
+    <meta name="data-sha"    content="3997e7f">
+    <meta name="sentry-trace" content="fcf7e5b28af84f62ab4bbb39dd7f48e7-de695d0bf62041e5-1">
+<meta name="baggage" content="sentry-trace_id=fcf7e5b28af84f62ab4bbb39dd7f48e7,sentry-sample_rate=1.0,sentry-sampled=true,sentry-environment=prod,sentry-public_key=86fd4175bcbfe3821fb001c42fd44727">
+  </head>
+  <body class="">
+  <div class="header">
+    <div class="navbar navbar-static-top" role="navigation">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle nav_hamburger" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a href=/>
+          <h1 class="logo_wrap logo pull-left">
+            <span class="logo_lw">Living Wage</span>
+            <span class="logo_calc">calculator</span>
+          </h1>
+        </a>
+      </div>
+      <div class="collapse navbar-collapse navbar-ex1-collapse" style="box-shadow: none!important!;">
+        <div class="col-sm-2 col-md-2 pull-right nav_link_wrap">
+          <ul class="nav-links nav navbar-nav">
+            <li><a href="/pages/methodology">Methodology</a></li>
+            <li><a href="/pages/faqs">FAQs</a></li>
+            <li><a href="/pages/contact">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+      <div class="container">
+    <div class="content">
+
+        <div class="body-content methodology-content">
+            <div>
+                <h1 class="page_title">What is a living wage and how is it estimated?</h1>
+            </div>
+            <p>
+                Today, families and individuals working in low-wage jobs make too little income to meet minimum standards of living in their community. But just how much do families need to meet these standards? Policymakers often turn to measures like the federal poverty line&mdash;a national number based on three times the cost of a minimum food diet in 1963&mdash;to answer that question. However these benchmarks no longer reflect the true cost of living in a modern economy.
+            </p>
+            <p> 
+                The Living Wage Calculator was originally developed in 2003 to comprehensively estimate the employment earnings&mdash;or the <strong>living wage</strong>&mdash;that a full-time worker requires to cover or support the costs of their family’s basic needs where they live. Today, the calculator features geographically-specific costs for food, childcare, health care, housing, transportation, other basic needs including household goods, personal care items, and broadband, and taxes at the county, metro, and state levels for 12 different family types.
+            </p>
+            <p>
+                Read on for an overview of how the living wage is calculated or dive into the <strong><a href="/resources/living_wage_technical_documentation.pdf">technical documentation</a></strong> produced by the Living Wage Institute for a more detailed description of the estimation methodology.
+            </p>
+
+
+            <h4 id="overview"><strong>Overview</strong></h4>
+            <p>
+                At its simplest, a <strong>living wage</strong> is what one full-time worker must earn on an hourly basis to help cover the cost of their family’s minimum basic needs where they live without depending on public or private assistanc. Here’s a quick guide for what you need to know about the living wage data you see on the calculator.
+            </p>
+
+            <h6>GEOGRAPHY</h6>
+            <p>
+                The calculator includes living wage estimates for <strong>3,144 counties</strong> to account for the geographic variation in costs across the U.S. The data is also available for <strong>387 Metropolitan Statistical Areas (MSAs or metros)</strong> and <strong>50 states</strong> plus Washington, D.C.
+            </p>
+
+            <div class="explainer-image-wrapper">
+                <img class="explainer-image" src="/assets/geographies-d42632115f5e97c8a70443993395807ff5bc8bbedee52f0ddefabf1a56879fdc.png" />
+            </div>
+
+            <h6>FAMILY TYPE</h6>
+            <p>
+                For each geography, there is a living wage estimate for <strong>12 family types</strong>, with varying numbers of adults and children as detailed in the graphic below. It’s important to note that in households with multiple full-time working adults, the living wage is what one of them would need to earn hourly at a full-time job, assuming the other is also earning the same. 
+            </p>
+
+            <div class="explainer-image-wrapper">
+                <img class="explainer-image" src="/assets/family-compositions-e864f3907e85812bd2afe30b005999e0a1402e863fdca14ab002c7b68b4dc79a.png" />
+            </div>
+
+            <h6>BASIC NEEDS</h6>
+            <p>
+                There are eight basic needs that make up the cost components of the living wage&mdash;food, childcare, health care, housing, transportation, civic engagement, broadband, and other necessities&mdash;with an additional cost associated with income and payroll taxes. Use the table below to explore the data sources for each of these components included in the living wage estimates for 2026. Because each source includes data from different years, all data used in calculating a living wage is adjusted for inflation to December 2025 dollars using expenditure-specific indexes from <a href="https://www.bls.gov/news.release/cpi.t01.htm" target="_blank">Consumer Price Index-All Urban Consumers (CPI-U)</a>. 
+            </p>
+
+            <table id="basic-needs-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Data&nbsp;Date</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Childcare</strong></td>
+                        <td>2024; 2023; 2022</td>
+                        <td>U.S. Department of Labor, Women’s Bureau, <a href="https://www.dol.gov/agencies/wb/topics/childcare/price-by-age-care-setting-2022" target="blank">National Database of Childcare Prices (2019-2022)</a>; Child Care Aware, <a href="https://www.childcareaware.org/price-landscape24/" target="blank">Child Care in America: 2024 Price & Supply (Appendices)</a>; Child Care Aware, <a href="https://www.childcareaware.org/thechildcarestandstill/#PriceofCare" target="blank">Child Care at a Standstill: Price and Landscape Analysis (Appendices)</a></td>
+                    </tr>
+                    <tr class="even">
+                        <td><strong>Civic Engagement</strong></td>
+                        <td>2024</td>
+                        <td><a href="https://www.bls.gov/cex/tables.htm" target="_blank">U.S. Bureau of Labor Statistics Consumer Expenditure Survey, Table 1400 and 1502</a> (Entertainment: fees and admissions; Audio and visual equipment and services; Pets; Toys, hobbies, and playground equipment; Entertainment: other supplies, equip., & services; Reading; and Education)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Food</strong></td>
+                        <td>June 2025</td>
+                        <td><a href="https://www.fns.usda.gov/cnpp/usda-food-plans-cost-food-monthly-reports" target="_blank">USDA Food Plans: Cost of Food Reports</a></td>
+                    </tr>
+                    <tr class="even">
+                        <td rowspan="2"><strong>Health Care</strong></td>
+                        <td>2025; 2024</td>
+                        <td><i>Health Insurance Premiums</i>: <a href="https://datatools.ahrq.gov/meps-ic" target="_blank">Medical Expenditure Panel Survey Health Insurance Component Analytical Tool (MEPSnet/IC)</a>; Kaiser Family Foundation, <a href="https://www.kff.org/health-costs/premiums-worker-contributions-among-workers-covered-by-employer-sponsored-coverage/" target="_blank"> Premiums and Worker Contributions Among Workers Covered by Employer-Sponsored Coverage, 1999-2025</a></td>
+                    </tr>
+                    <tr class="even">
+                        <td>2024</td>
+                        <td><i>Out-of-Pocket Medical Expenses</i>: <a href="https://www.bls.gov/cex/tables.htm" target="_blank">U.S. Bureau of Labor Statistics Consumer Expenditure Survey, Table 1400 and 1502</a> (Drugs; Medical services; and Medical supplies)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Housing</strong></td>
+                        <td>October 2025</td>
+                        <td><a href="https://www.huduser.gov/portal/datasets/fmr.html#2025" target="_blank">U.S. Department of Housing and Urban Development Fair Market Rents (40th Percentile Rents)</a></td>
+                    </tr>
+                    <tr class="even">
+                        <td rowspan="2"><strong>Internet & Mobile</strong></td>
+                        <td>2020</td>
+                        <td>BroadbandNow <a href="https://broadbandnow.com/research/county-broadband-statistics" target="_blank">United States County Broadband Statistics for 2020</a></td>
+                    </tr>
+                    <tr class="even">
+                        <td>2024</td>
+                        <td><a href="https://www.bls.gov/cex/tables.htm" target="_blank">U.S. Bureau of Labor Statistics Consumer Expenditure Survey, Table 1400 and 1502</a> (Cellular phone service)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Transportation</strong></td>
+                        <td>2024; 2022</td>
+                        <td><a href="https://www.bls.gov/cex/tables.htm" target="_blank"> U.S. Bureau of Labor Statistics Consumer Expenditure Survey, Table 1400 and 1502</a> (Cars and trucks (used); Gasoline and motor oil; Other vehicle expenses; and Public transportation); Center for Neighborhood Technology, <a href="https://htaindex.cnt.org/download/data.php" target="_blank">H&T Index</a></td>
+                    </tr>
+                    <tr class="even">
+                        <td><strong>Other Necessities</strong></td>
+                        <td>2024</td>
+                        <td><a href="https://www.bls.gov/cex/tables.htm" target="_blank"> U.S. Bureau of Labor Statistics Consumer Expenditure Survey, Table 1400 and 1502</a>(Apparel and services; Housekeeping supplies; Personal care products and services; Household furnishings and equipment; and Miscellaneous household equipment)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Income and Payroll Taxes</strong></td>
+                        <td>2025</td>
+                        <td>PolicyEngine <a href="https://www.policyengine.org/us" target="_blank">tax microsimulation model</a> (a <a href="https://www.policyengine.org/us/research/policyengine-nber-mou-taxsim" target="_blank">continuation</a> of the National Bureau of Economic Research's <a href="https://www.nber.org/research/data/taxsim" target="_blank"> TAXSIM (v35)</a> model)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h6>FAMILY BUDGET AND LIVING WAGE CALCULATION</h6>
+            <p>
+                The underlying data on the cost of basic needs is used to calculate the actual hourly living wage for each county and each family type through a four step process, summarized in the figure below. 
+            </p>
+
+            <div class="explainer-image-wrapper">
+                <img class="explainer-image" src="/assets/how-to-calculate-d17872e6ba8e5fa75c679004e6faf9cfa841737713e14b6d0edb558a271226c8.png" />
+            </div>
+
+
+            <h4 id="basic-needs"><strong>What are basic needs?</strong></h4>
+            <p>
+                The Living Wage Calculator’s estimates are based on the costs of <i>eight components</i>, each of which represents a basic need: childcare, civic engagement, food, health care. housing, internet & mobile, transportation, and other necessities. It also includes relevant income and payroll taxes (covered in the following section).
+            </p> 
+            <p>
+                In general, it is assumed that families select the lowest cost option that enables them to meet each of these basic needs at a minimum but adequate level. As such, the living wage does not budget for eating out at a restaurant or meals that aren’t prepared at home; leisure time, holidays, or unpaid vacations; or savings, retirement, and other long-term financial investments. 
+            </p>
+            <p>
+                Below, explore the definitions and underlying data sources for each of the cost components of a living wage.
+            </p>
+
+                <div class="panel-group" id="basic-needs-accordion">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Childcare</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        Data on the cost of childcare primarily comes from county-level information collected from the Department of Labor's <a href="https://www.dol.gov/agencies/wb/topics/childcare/price-by-age-care-setting-2022" target="_blank">National Database of Childcare Prices (2019-2022)</a>. For counties without data in the Department of Labor’s database, we use <a href="https://www.childcareaware.org/thechildcarestandstill/#PriceofCare" target="_blank">Child Care Aware</a> data. Since the cost of care can vary depending on the age of the child, we select a combination of data on center-based care for toddlers, preschoolers, and school-age children for each family type. In families where only one adult is working, we assume the other non-working adult is shouldering all childcare responsibilities at no additional cost (though realistically, there may be significant economic tradeoffs that come at a high price for these families, too).
+                    </div>
+                </div>
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Civic engagement</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        While not a typical component of living wage historically, civic engagement&mdash;or the ability to participate in your local community&mdash;has become an increasingly sizable individual and family expense in daily life in the U.S. Data on the cost of civic engagement is constructed from the U.S. Bureau of Labor Statistics' annually-collected <a href="https://www.bls.gov/opub/hom/cex/home.htm" target="_blank">Consumer Expenditure Survey</a>, and it includes the regionally-adjusted cost of education, reading, fees and admissions, pets, toys, hobbies, playground equipment, and other items necessary for participating and engaging in civic activities.
+                    </div>
+                </div>
+            
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Food</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        Data on the cost of food is based on the U.S. Department of Agriculture's <a href="https://www.fns.usda.gov/cnpp/low-moderate-liberal-food-plans-2007" target="_blank">Low-Cost Food Plan</a>, which represents a nutritious and practical diet all prepared at home and is considered to be the second least expensive out of the <a href="https://www.fns.usda.gov/cnpp/usda-food-plans" target="_blank">four</a> nutritionally adequate national standards for food plans described by the USDA. The USDA publishes <a href="https://www.fns.usda.gov/cnpp/usda-food-plans-cost-food-monthly-reports" target="_blank">monthly costs</a> associated with the Low-Cost Food Plan, and this national cost broken down by family size and individual family members' gender and age serves as a base for the estimates.
+                    </div>
+                </div>
+            
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Health care</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        The cost of health care is composed of two subcategories: (1) premiums associated with employer-sponsored health insurance plans and (2) out-of-pocket expenses for medical services, drugs, and medical supplies. Data on the cost of health insurance premiums is based on the <a href="https://datatools.ahrq.gov/meps-ic" target="_blank"> Medical Expenditure Panel Survey Health Insurance Component (MEPS-IC) </a>, which uses an annual survey of employers to develop state-level estimates for annual premiums and amount contributed per employee at private sector establishments for single individuals, an individual and one dependent, and families. Regionally-adjusted data on the cost of medical services, drugs, and medical supplies comes from the U.S. Bureau of Labor Statistics' annually-collected <a href="https://www.bls.gov/opub/hom/cex/home.htm" target="_blank">Consumer Expenditure Survey</a>.
+                    </div>
+                </div>
+            
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Housing</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        Data on the cost of housing comes from the U.S. Department of Housing and Urban Development's <a href="https://www.huduser.gov/portal/datasets/fmr.html" target="_blank">Fair Market Rents (FMR)</a> dataset, developed from <a href="https://www.huduser.gov/portal/sites/default/files/pdf/fmr-overview.pdf" target="_blank">responses</a> from recent movers in the American Community Survey. For metropolitan areas and nonmetropolitan counties, the FMR dataset provides estimates of the 40th percentile gross rents&mdash;which include the cost of shelter, contract rent, and utilities excluding telephone, cable, and broadband&mdash;for standard quality units ranging from zero to four bedrooms.
+                    </div>
+                </div>
+            
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Internet & mobile</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        Data on the cost of broadband services is composed of two subcategories: (1) home internet plans and (2) cellular telephone (mobile) service subscriptions, both critical utilities that are not currently captured within the U.S. Department of Housing and Urban Development's <a href="https://www.huduser.gov/portal/datasets/fmr.html" target="_blank">Fair Market Rents</a> dataset. County-level data on the cost of internet comes from research on lowest-cost monthly plans from <a href="https://broadbandnow.com/" target="_blank">BroadbandNow</a>, an independent resource for comparing local internet providers. Regionally-adjusted data on the cost of cellular telephone services comes from the U.S. Bureau of Labor Statistics' annually-collected <a href="https://www.bls.gov/opub/hom/cex/home.htm" target="_blank">Consumer Expenditure Survey</a>.
+                    </div>
+                </div>
+            
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Transportation</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        The cost of transportation is modeled using a combination of data from the U.S. Bureau of Labor Statistics' annually-collected <a href="https://www.bls.gov/opub/hom/cex/home.htm" target="blank">Consumer Expenditure Survey</a> and the <a href="https://htaindex.cnt.org/" target="_blank">Center for Neighborhood Technology's</a> H&T Index. The Consumer Expenditure Survey data includes regionally-adjusted expense estimates for used cars and trucks, gasoline, motor oil, other vehicle expenses (like financing, insurance, and maintenance), and public transit, which all vary based on household size.
+                    </div>
+                </div>
+            
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Other necessities</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        Some basic needs&mdash;like clothing, personal care products, and housekeeping supplies&mdash;are not otherwise covered in the other major budget components. To account for these other necessities, regionally-adjusted data on their costs are sourced from the U.S. Bureau of Labor Statistics' annually-collected <a href="https://www.bls.gov/opub/hom/cex/home.htm" target="_blank">Consumer Expenditure Survey</a>.
+                    </div>
+                </div>
+            </div>
+            
+            <h4 id="calculation"><strong>How is a living wage calculated?</strong></h4>
+            <p>
+                The cost estimates for each basic need are used to calculate the hourly living wage in four steps for each of the 3,144 counties. Then, an additional step aggregates county-level living wages into metro- and state-level estimates. 
+            </p>
+
+            <div class="panel-group" id="calculation-accordion">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Step 1: Calculating an annual family budget less taxes</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        As a first step, the cost of each basic need is added together for each county, arriving at an annual family budget, less taxes. Each basic need, however, may not be applicable to every family type. For example, a family with no children will have zero child care costs as might a family with just one of the two adults working.
+                    </div>
+                </div>
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Step 2: Identifying the additional cost of income and payroll taxes</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        The annual family budget calculated in Step 1 reflects earnings <i>after</i> taxes have been paid. In other words, it does not include the money a family needs to withhold from their earnings to cover their taxes.<br><br>
+                        While property and sales taxes are already considered in the estimated cost of each basic need, the additional cost of income and payroll taxes are appraised using the PolicyEngine’s <a href="https://www.policyengine.org/us" target="_blank"> tax microsimulation model</a>, a continuation of National Bureau of Economic Research's <a href="https://taxsim.nber.org/feenberg-coutts.pdf" target="_blank">TAXSIM</a> microsimulation of the U.S. federal and state income tax system. Through an iterative process with the PolicyEngine model, we use the annual family budget (after taxes) to determine a family's required gross income; family composition to determine filing status and number of dependents; and the county to identify the state of residence. Based on these inputs, the PolicyEngine model calculates the amount owed in federal and state income and payroll taxes on the estimated gross income, assuming that an employer covers half&mdash;or 7.65%&mdash;of the Federal Insurance Contributions Act (FICA) payroll tax liability. The federal and state income and payroll taxes are then added to the annual family budget less taxes, yielding the total annual family budget needed to meet all basic needs, including tax.
+                    </div>
+                </div>
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Step 3: Dividing by the number of working adults</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        The total annual family budget is then divided by the total number of workers in a family. For instance, if a family of four had two working adults, the pre-tax annual family budget would be divided by two but if a family of four had only one working adult, the pre-tax annual family budget would only be divided by one.
+                    </div>
+                </div>
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title">
+                            <strong>Step 4: Generating an hourly living wage</strong>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        To transform value generated in Step 3 into an hourly wage rate, we divide the worker's earnings by 2,080 hours, which assumes that the one working adult is employed full-time at 40 hours a week for 52 weeks a year. This hourly wage&mdash;or the <strong>living wage</strong>&mdash;is the minimum a full-time worker must earn to support the costs of their family's basic needs and taxes in the county in which they live.
+                    </div>
+                </div>
+            </div>
+
+            <h6>METRO- AND STATE-LEVEL LIVING WAGES</h6>
+            <p>
+                While similar goods and services are available across the U.S., factors like state and local tax rates, market demand, competition, shipping, logistical costs, and seasons, among others can greatly impact the local prices of basic needs. To account for this localized variation in costs, the Living Wage Calculator data is computed and primarily meant to be used at the county-level. For ease of reporting, however, we also provide living wage estimates for 387 Metropolitan Statistical Areas&mdash;more commonly called MSAs or metros&mdash;and each of the 50 states plus Washington, D.C. To aggregate county-level data to these larger geographic areas, where applicable, we use county population estimates from the U.S. Census Bureau to take a weighted average of the living wage&mdash;or its underlying components&mdash;across counties.
+            </p>
+
+
+            <h4 id="yoy-differences"><strong>What’s different between this year and last year?</strong></h4>
+            <p>
+                While the methodology to calculate a living wage remains relatively consistent year-over-year, changes in the underlying data sources can increase or decrease the estimates for the cost of basic needs or the living wage overall each year. 
+            </p>
+            <p>
+                This year, we preserved most of our methodology, barring updates to the underlying datasets for the most recent data and a transition to using PolicyEngine’s <a href="https://www.policyengine.org/us" target="_blank">tax microsimulation model</a>.
+            </p>
+
+
+            <h4><strong>Want to learn more?</strong></h4>
+            <p>
+                To learn even more about the  methodology behind the data featured on the Living Wage Calculator, please read the <strong><a href="/resources/living_wage_technical_documentation.pdf" target="_blank">technical documentation</a></strong> produced by the Living Wage Institute. 
+            </p>
+
+        </div>    
+    </div>
+</div>
+  </div>
+
+  <div id="footer" class="footer">
+    <div class="partners">
+      <div class="partner_thank_you">
+       Supporters
+      </div>
+      <span>
+        <a target="_blank" href="https://www.westarete.com"><img class="partner_logo" src="/assets/westarete_logo-6858ee41458759b4dcf5fdbdf34da868dc53966f7775659a87347b9e80707d7b.png" /></a>
+      </span>
+      <span>
+        <a target="_blank" href="https://www.ridewithloop.com/"><img class="partner_logo" src="/assets/loop-logo-53dec4932eeafada31d8efdaa753b2f4b1c10b5d93be28f07154b4129068aa9b.png" /></a>
+      </span>
+      <span>
+        <a target="_blank" href="https://www.livingwage.institute/"><img class="partner_logo" src="/assets/lwi-logo-2fb7dba1d361b06c99067914414523c82b59c6adba6d3c3279b5f14c01c758f4.png" /></a>
+      </span>
+      <span>
+        <a target="_blank" href="https://www.linkedin.com/company/translational-research-service/"><img class="partner_logo" src="/assets/trs-logo-75fa0dd99523252eef2b76a92c71fe681e0a380b0ef007eea63c48d99c9afdac.png" /></a>
+      </span>
+      <span>
+        <a target="_blank" href="https://www.policyengine.org/us"><img class="partner_logo" src="/assets/policy-engine-logo-d832570005a1449fa86f7924961b46064141561e5fae3667fff86c2367473597.png" /></a>
+      </span>
+
+      <div class="data-warning">
+        Please <strong>do not scrape the data</strong>. For further information, please visit the <a href="/pages/faqs">FAQs</a> and <a href="/pages/methodology">Methodology</a> pages. 
+        <br>If you are interested in licensing the data found on this website, please reach out directly to the <a href="https://www.livingwage.institute" target="_blank">Living Wage Institute</a> via the <a href="https://www.livingwage.institute/contact-lwc" target="_blank"><strong>contact form</strong></a>. 
+      </div>
+    </div>
+    <div id="copyright">
+      <p>
+        &copy;
+        2026
+        <a target="_blank" href="https://dusp.mit.edu/people/amy-glasmeier">Dr. Amy K. Glasmeier</a>
+        and the
+        <a target="_blank" href="https://web.mit.edu/">Massachusetts Institute of Technology</a>
+        <br>
+        <a target="_blank" href="https://accessibility.mit.edu/">Accessibility</a>
+      </p>
+    </div>
+    <div id="metadata">
+      Build date:   2026-02-15<br>  
+      Git commit:   55b4996<br>
+      Data file:    3997e7f
+    </div>
+  </div>
+
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-183G0JWBTC"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-183G0JWBTC');
+</script>
+
+  </body>
+</html>
